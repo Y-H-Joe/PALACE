@@ -1,0 +1,5 @@
+org\openscience\cdk\modulesuites\MforcefieldTests.java
+org\openscience\cdk\modeling\builder3d\MMFF94BasedParameterSetReaderTest.java
+org\openscience\cdk\modeling\builder3d\ForceFieldConfiguratorTest.java
+org\openscience\cdk\coverage\ForcefieldCoverageTest.java
+org\openscience\cdk\charges\MMFF94PartialChargesTest.java

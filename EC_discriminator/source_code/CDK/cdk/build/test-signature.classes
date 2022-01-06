@@ -1,0 +1,10 @@
+org\openscience\cdk\similarity\SignatureFingerprintTanimotoTest*.class
+org\openscience\cdk\signature\SignatureQuotientGraphTest*.class
+org\openscience\cdk\signature\OrbitTest*.class
+org\openscience\cdk\signature\MoleculeSignatureTest*.class
+org\openscience\cdk\signature\MoleculeFromSignatureBuilderTest*.class
+org\openscience\cdk\signature\AtomSignatureTest*.class
+org\openscience\cdk\signature\AbstractSignatureTest*.class
+org\openscience\cdk\modulesuites\MsignatureTests*.class
+org\openscience\cdk\fingerprint\SignatureFingerprinterTest*.class
+org\openscience\cdk\coverage\SignatureCoverageTest*.class

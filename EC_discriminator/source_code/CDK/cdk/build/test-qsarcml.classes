@@ -1,0 +1,3 @@
+org\openscience\cdk\modulesuites\MqsarcmlTests*.class
+org\openscience\cdk\io\cml\QSARCMLRoundTripTest*.class
+org\openscience\cdk\coverage\QsarcmlCoverageTest*.class

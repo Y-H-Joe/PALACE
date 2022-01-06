@@ -1,0 +1,9 @@
+org\openscience\cdk\structgen\VicinitySampler*.class
+org\openscience\cdk\structgen\stochastic\PartialFilledStructureMerger*.class
+org\openscience\cdk\structgen\stochastic\operator\CrossoverMachine*.class
+org\openscience\cdk\structgen\stochastic\operator\ChemGraph*.class
+org\openscience\cdk\structgen\SingleStructureRandomGenerator*.class
+org\openscience\cdk\structgen\RandomGenerator*.class
+org\openscience\cdk\structgen\IStructureGenerationListener*.class
+org\openscience\cdk\atomtype\StructGenMatcher*.class
+org\openscience\cdk\atomtype\StructGenAtomTypeGuesser*.class

@@ -1,0 +1,9 @@
+org\openscience\cdk\modulesuites\MsdgTests.java
+org\openscience\cdk\layout\TemplateHandlerTest.java
+org\openscience\cdk\layout\StructureDiagramGeneratorTest.java
+org\openscience\cdk\layout\OverlapResolverTest.java
+org\openscience\cdk\layout\NonPlanarBondsTest.java
+org\openscience\cdk\layout\HydrogenPlacerTest.java
+org\openscience\cdk\layout\CorrectGeometricConfigurationTest.java
+org\openscience\cdk\layout\AtomPlacerTest.java
+org\openscience\cdk\coverage\SdgCoverageTest.java

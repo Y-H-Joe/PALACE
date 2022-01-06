@@ -1,0 +1,10 @@
+org\openscience\cdk\similarity\SignatureFingerprintTanimotoTest.java
+org\openscience\cdk\signature\SignatureQuotientGraphTest.java
+org\openscience\cdk\signature\OrbitTest.java
+org\openscience\cdk\signature\MoleculeSignatureTest.java
+org\openscience\cdk\signature\MoleculeFromSignatureBuilderTest.java
+org\openscience\cdk\signature\AtomSignatureTest.java
+org\openscience\cdk\signature\AbstractSignatureTest.java
+org\openscience\cdk\modulesuites\MsignatureTests.java
+org\openscience\cdk\fingerprint\SignatureFingerprinterTest.java
+org\openscience\cdk\coverage\SignatureCoverageTest.java

@@ -1,0 +1,4 @@
+org\openscience\cdk\modulesuites\MiordfTests*.class
+org\openscience\cdk\libio\jena\ConvertorTest*.class
+org\openscience\cdk\io\rdf\CDKOWLWriterTest*.class
+org\openscience\cdk\io\rdf\CDKOWLReaderTest*.class

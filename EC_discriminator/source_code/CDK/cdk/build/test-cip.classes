@@ -1,0 +1,14 @@
+org\openscience\cdk\modulesuites\McipTests*.class
+org\openscience\cdk\geometry\cip\VisitedAtomsTest*.class
+org\openscience\cdk\geometry\cip\TerminalLigandTest*.class
+org\openscience\cdk\geometry\cip\rules\MassNumberRuleTest*.class
+org\openscience\cdk\geometry\cip\rules\CombinedAtomicMassNumberRuleTest*.class
+org\openscience\cdk\geometry\cip\rules\CIPLigandRuleTest*.class
+org\openscience\cdk\geometry\cip\rules\AtomicNumberRuleTest*.class
+org\openscience\cdk\geometry\cip\LigandTest*.class
+org\openscience\cdk\geometry\cip\LigancyFourChiralityTest*.class
+org\openscience\cdk\geometry\cip\ImplicitHydrogenLigandTest*.class
+org\openscience\cdk\geometry\cip\ImmutableHydrogenTest*.class
+org\openscience\cdk\geometry\cip\CIPToolTest*.class
+org\openscience\cdk\geometry\cip\CIPSMILESTest*.class
+org\openscience\cdk\coverage\CipCoverageTest*.class

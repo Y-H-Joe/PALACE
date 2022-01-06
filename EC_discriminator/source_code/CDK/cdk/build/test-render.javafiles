@@ -1,0 +1,11 @@
+org\openscience\cdk\renderer\SomeParam.java
+org\openscience\cdk\renderer\RendererModelTest.java
+org\openscience\cdk\renderer\generators\parameter\AbstractGeneratorParameterTest.java
+org\openscience\cdk\renderer\elements\TextElementTest.java
+org\openscience\cdk\renderer\color\RasmolColorsTest.java
+org\openscience\cdk\renderer\color\PartialAtomicChargeColorsTest.java
+org\openscience\cdk\renderer\color\CPKAtomColorsTest.java
+org\openscience\cdk\renderer\color\CDKAtomColorsTest.java
+org\openscience\cdk\renderer\color\CDK2DAtomColorsTest.java
+org\openscience\cdk\modulesuites\MrenderTests.java
+org\openscience\cdk\coverage\RenderCoverageTest.java

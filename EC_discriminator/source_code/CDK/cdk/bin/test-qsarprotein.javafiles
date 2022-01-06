@@ -1,0 +1,4 @@
+org\openscience\cdk\qsar\descriptors\protein\TaeAminoAcidDescriptorTest.java
+org\openscience\cdk\qsar\descriptors\molecular\AminoAcidCountDescriptorTest.java
+org\openscience\cdk\modulesuites\MqsarproteinTests.java
+org\openscience\cdk\coverage\QsarproteinCoverageTest.java

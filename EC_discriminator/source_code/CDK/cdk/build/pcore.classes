@@ -1,0 +1,9 @@
+org\openscience\cdk\pharmacophore\PharmacophoreUtils*.class
+org\openscience\cdk\pharmacophore\PharmacophoreQueryBond*.class
+org\openscience\cdk\pharmacophore\PharmacophoreQueryAtom*.class
+org\openscience\cdk\pharmacophore\PharmacophoreQueryAngleBond*.class
+org\openscience\cdk\pharmacophore\PharmacophoreQuery*.class
+org\openscience\cdk\pharmacophore\PharmacophoreMatcher*.class
+org\openscience\cdk\pharmacophore\PharmacophoreBond*.class
+org\openscience\cdk\pharmacophore\PharmacophoreAtom*.class
+org\openscience\cdk\pharmacophore\PharmacophoreAngleBond*.class

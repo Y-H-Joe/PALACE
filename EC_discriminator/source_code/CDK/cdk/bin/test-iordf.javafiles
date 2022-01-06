@@ -1,0 +1,4 @@
+org\openscience\cdk\modulesuites\MiordfTests.java
+org\openscience\cdk\libio\jena\ConvertorTest.java
+org\openscience\cdk\io\rdf\CDKOWLWriterTest.java
+org\openscience\cdk\io\rdf\CDKOWLReaderTest.java

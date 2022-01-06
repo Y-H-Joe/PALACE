@@ -1,0 +1,28 @@
+
+//
+SELECTED AAM MAPPING
+[H:21][OH:14].[O:1]=[P:13]([OH:5])([OH:12])[O:11][P:8](=[O:9])([OH:10])[O:7][P:3](=[O:4])([OH:2])[OH:6]>>[H:21][O:7][P:8](=[O:9])([OH:10])[O:11][P:13](=[O:1])([OH:12])[OH:5].[O:4]=[P:3]([OH:6])([OH:14])[OH:2]
+
+
+//
+REACTANT INPUT ATOM INDEX<->AAM ID
+{1=12, 2=8, 3=7, 4=3, 5=2, 6=1, 7=5, 8=6, 9=4, 10=10, 11=11, 12=9, 13=13, 14=15, 15=16, 16=17, 17=18, 18=14, 19=20, 20=19, 21=21}
+PRODUCT INPUT ATOM INDEX<->AAM ID
+{1=8, 2=7, 3=3, 4=2, 5=1, 6=5, 7=6, 8=4, 9=10, 10=11, 11=12, 12=13, 13=9, 14=16, 15=15, 16=14, 17=18, 18=19, 19=20, 20=21, 21=17}
+
+//
+1) AAM MAPPING ALGORITHM: Local Minimization Model
+[H:21][OH:14].[O:1]=[P:13]([OH:5])([OH:12])[O:11][P:8](=[O:9])([OH:10])[O:7][P:3](=[O:4])([OH:2])[OH:6]>>[H:21][O:7][P:8](=[O:9])([OH:10])[O:11][P:13](=[O:1])([OH:12])[OH:5].[O:4]=[P:3]([OH:6])([OH:14])[OH:2]
+SCORE: 4, CHAOS: 0 <=> 10, SIGMA: 0, ENERGY: 6,7E02, DELTA: 16E02
+//
+2) AAM MAPPING ALGORITHM: Global Maximization Model
+[H:21][OH:14].[O:1]=[P:13]([OH:5])([OH:12])[O:11][P:8](=[O:9])([OH:10])[O:7][P:3](=[O:4])([OH:2])[OH:6]>>[H:21][O:11][P:8](=[O:9])([OH:10])[O:7][P:3](=[O:4])([OH:2])[OH:6].[O:1]=[P:13]([OH:12])([OH:14])[OH:5]
+SCORE: 4, CHAOS: 0 <=> 10, SIGMA: 0, ENERGY: 6,7E02, DELTA: 16E02
+//
+3) AAM MAPPING ALGORITHM: Max-Mixture Model
+[H:21][OH:14].[O:1]=[P:13]([OH:5])([OH:12])[O:11][P:8](=[O:9])([OH:10])[O:7][P:3](=[O:4])([OH:2])[OH:6]>>[H:21][O:11][P:8](=[O:9])([OH:10])[O:7][P:3](=[O:4])([OH:2])[OH:6].[O:1]=[P:13]([OH:12])([OH:14])[OH:5]
+SCORE: 4, CHAOS: 0 <=> 10, SIGMA: 0, ENERGY: 6,7E02, DELTA: 16E02
+//
+4) AAM MAPPING ALGORITHM: Ring Conservation Model
+[H:21][OH:14].[O:1]=[P:13]([OH:5])([OH:12])[O:11][P:8](=[O:9])([OH:10])[O:7][P:3](=[O:4])([OH:2])[OH:6]>>[H:21][O:7][P:8](=[O:9])([OH:10])[O:11][P:13](=[O:1])([OH:5])[OH:12].[O:4]=[P:3]([OH:6])([OH:14])[OH:2]
+SCORE: 4, CHAOS: 0 <=> 10, SIGMA: 0, ENERGY: 6,7E02, DELTA: 16E02

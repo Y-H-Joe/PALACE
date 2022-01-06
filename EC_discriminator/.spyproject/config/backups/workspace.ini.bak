@@ -1,0 +1,12 @@
+[workspace]
+restore_data_on_startup = True
+save_data_on_exit = True
+save_history = True
+save_non_project_files = False
+project_type = 'empty-project-type'
+recent_files = ['generat_rules_from_reaction_SMILES_20211203.py', 'input_output2EC_20211208.py', 'retroDB2train_20211216.py', 'add_prot_bin2retro_processed_v2_20211216.py']
+
+[main]
+version = 0.2.0
+recent_files = []
+

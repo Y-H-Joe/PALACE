@@ -1,0 +1,3 @@
+org\openscience\cdk\tools\IonizationPotentialToolTest.java
+org\openscience\cdk\modulesuites\MionpotTests.java
+org\openscience\cdk\coverage\IonpotCoverageTest.java

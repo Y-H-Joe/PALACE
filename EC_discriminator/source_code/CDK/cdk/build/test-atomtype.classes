@@ -1,0 +1,6 @@
+org\openscience\cdk\modulesuites\MatomtypeTests*.class
+org\openscience\cdk\coverage\AtomtypeCoverageTest*.class
+org\openscience\cdk\config\atomtypes\OWLAtomTypeMappingReaderTest*.class
+org\openscience\cdk\config\atomtypes\OWLAtomTypeMappingHandlerTest*.class
+org\openscience\cdk\atomtype\SybylAtomTypeMatcherTest*.class
+org\openscience\cdk\atomtype\mapper\AtomTypeMapperTest*.class

@@ -1,0 +1,24 @@
+-Dlog4j.configuration="C:/Documents and Settings/nmvdewie/My Documents/workspaces/Genesys Workspace/Genesys/src/Nickslog4j.properties"
+
+The LEVEL is any one of DEBUG, INFO, WARN, ERROR or FATAL 
+
+######################
+log4j.rootLogger=DEBUG, A1
+
+
+log4j.appender.A1=org.apache.log4j.ConsoleAppender
+log4j.appender.A1.layout=org.apache.log4j.PatternLayout
+
+log4j.logger.system=DEBUG, sys
+log4j.appender.sys=org.apache.log4j.RollingFileAppender
+log4j.appender.sys.File=C:/Documents and Settings/nmvdewie/My Documents/workspaces/Genesys Workspace/Genesys/KMB.log
+log4j.appender.sys.layout=org.apache.log4j.PatternLayout
+
+log4j.category.species=DEBUG, spc
+log4j.appender.spc=org.apache.log4j.RollingFileAppender
+log4j.appender.spc.File=C:/Documents and Settings/nmvdewie/My Documents/workspaces/Genesys Workspace/Genesys/spcs.log
+log4j.appender.spc.layout=org.apache.log4j.PatternLayout
+#######################
+NVDW: files specified by absolute paths!
+
+

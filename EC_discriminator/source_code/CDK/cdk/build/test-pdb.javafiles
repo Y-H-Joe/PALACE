@@ -1,0 +1,7 @@
+org\openscience\cdk\tools\ProteinBuilderToolTest.java
+org\openscience\cdk\templates\AminoAcidsTest.java
+org\openscience\cdk\modulesuites\MpdbTests.java
+org\openscience\cdk\io\PDBWriterTest.java
+org\openscience\cdk\io\PDBReaderTest.java
+org\openscience\cdk\io\PDBReaderFactoryTest.java
+org\openscience\cdk\coverage\PdbCoverageTest.java

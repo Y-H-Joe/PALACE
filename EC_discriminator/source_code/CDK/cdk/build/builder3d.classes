@@ -1,0 +1,4 @@
+org\openscience\cdk\modeling\builder3d\TemplateHandler3D*.class
+org\openscience\cdk\modeling\builder3d\ModelBuilder3D*.class
+org\openscience\cdk\modeling\builder3d\AtomTetrahedralLigandPlacer3D*.class
+org\openscience\cdk\modeling\builder3d\AtomPlacer3D*.class

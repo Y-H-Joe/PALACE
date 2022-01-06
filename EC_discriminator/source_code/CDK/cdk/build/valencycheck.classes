@@ -1,0 +1,7 @@
+org\openscience\cdk\tools\SmilesValencyChecker*.class
+org\openscience\cdk\tools\SaturationChecker*.class
+org\openscience\cdk\tools\IValencyChecker*.class
+org\openscience\cdk\tools\IDeduceBondOrderTool*.class
+org\openscience\cdk\tools\CDKValencyChecker*.class
+org\openscience\cdk\tools\CDKHydrogenAdder*.class
+org\openscience\cdk\tools\AtomTypeAwareSaturationChecker*.class

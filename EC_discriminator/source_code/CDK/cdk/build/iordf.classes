@@ -1,0 +1,4 @@
+org\openscience\cdk\libio\jena\Convertor*.class
+org\openscience\cdk\libio\jena\CDK*.class
+org\openscience\cdk\io\rdf\CDKOWLWriter*.class
+org\openscience\cdk\io\rdf\CDKOWLReader*.class

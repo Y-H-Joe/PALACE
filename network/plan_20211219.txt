@@ -1,0 +1,27 @@
+what we have done:
+yh: dataprepare, location: z620 /data0/yihang/microbiomeMetabolism
+jc：三个网络，seqtoseq , s2swithAtt(done), transfomer(done),测试的脚本，modify embedding layer
+
+what we need to do:
+1. train set / test set split:
+	uniprot sprot/trembl enzyme   > small sbatch
+	uniprot sprot/trembl nonenzyme    > small sbatch
+	retro database enhenced   > small sbatch
+		1. make sure how to split
+		2. test the quality / efficiency of network
+		3. test cluster (docker)
+2. test the network
+	two for jc, one for yh
+	
+3. train on cluster
+	gpu4 4 T4
+	gpu2
+4. write article
+	
+	
+分工：
+jc: seqtoseq to done, embedding layer train, multi-gups 
+yh: understanding beam search; test constructed network on cluster
+
+
+

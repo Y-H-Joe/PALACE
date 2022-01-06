@@ -1,0 +1,8 @@
+org\openscience\cdk\modulesuites\Mbuilder3dTests*.class
+org\openscience\cdk\modeling\builder3d\TemplateHandler3DTest*.class
+org\openscience\cdk\modeling\builder3d\ModelBuilder3DTest*.class
+org\openscience\cdk\modeling\builder3d\FurtherTemplateHandler3DTest*.class
+org\openscience\cdk\modeling\builder3d\FurtherAtomPlacer3DTest*.class
+org\openscience\cdk\modeling\builder3d\AtomTetrahedralLigandPlacer3DTest*.class
+org\openscience\cdk\modeling\builder3d\AtomPlacer3DTest*.class
+org\openscience\cdk\coverage\Builder3dCoverageTest*.class

@@ -1,0 +1,15 @@
+org\openscience\cdk\smiles\SmilesParserTest*.class
+org\openscience\cdk\smiles\SmilesGeneratorTest*.class
+org\openscience\cdk\smiles\FixBondOrdersToolTest*.class
+org\openscience\cdk\smiles\DeduceBondSystemToolTest*.class
+org\openscience\cdk\smiles\CDKToBeamTest*.class
+org\openscience\cdk\smiles\BeamToCDKTest*.class
+org\openscience\cdk\normalize\NormalizerTest*.class
+org\openscience\cdk\modulesuites\MsmilesTests*.class
+org\openscience\cdk\io\SMILESWriterTest*.class
+org\openscience\cdk\io\SMILESReaderTest*.class
+org\openscience\cdk\io\SMILES2Mol2WriterTest*.class
+org\openscience\cdk\io\MoSSOutputReaderTest*.class
+org\openscience\cdk\io\iterator\IteratingSMILESReaderTest*.class
+org\openscience\cdk\fingerprint\LingoFingerprinterTest*.class
+org\openscience\cdk\coverage\SmilesCoverageTest*.class

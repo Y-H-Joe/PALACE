@@ -1,0 +1,12 @@
+org\openscience\cdk\smiles\SmilesParser*.class
+org\openscience\cdk\smiles\SmilesGenerator*.class
+org\openscience\cdk\smiles\FixBondOrdersTool*.class
+org\openscience\cdk\smiles\DeduceBondSystemTool*.class
+org\openscience\cdk\smiles\CDKToBeam*.class
+org\openscience\cdk\smiles\BeamToCDK*.class
+org\openscience\cdk\normalize\Normalizer*.class
+org\openscience\cdk\io\SMILESWriter*.class
+org\openscience\cdk\io\SMILESReader*.class
+org\openscience\cdk\io\MoSSOutputReader*.class
+org\openscience\cdk\io\iterator\IteratingSMILESReader*.class
+org\openscience\cdk\fingerprint\LingoFingerprinter*.class

@@ -1,0 +1,5 @@
+org\openscience\cdk\qsar\descriptors\molecular\IPMolecularLearningDescriptorTest*.class
+org\openscience\cdk\qsar\descriptors\bond\IPBondLearningDescriptorTest*.class
+org\openscience\cdk\qsar\descriptors\atomic\IPAtomicLearningDescriptorTest*.class
+org\openscience\cdk\modulesuites\MqsarionpotTests*.class
+org\openscience\cdk\coverage\QsarionpotCoverageTest*.class

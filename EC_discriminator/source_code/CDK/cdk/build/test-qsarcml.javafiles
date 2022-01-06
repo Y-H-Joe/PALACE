@@ -1,0 +1,3 @@
+org\openscience\cdk\modulesuites\MqsarcmlTests.java
+org\openscience\cdk\io\cml\QSARCMLRoundTripTest.java
+org\openscience\cdk\coverage\QsarcmlCoverageTest.java

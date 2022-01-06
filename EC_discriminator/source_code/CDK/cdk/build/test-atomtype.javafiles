@@ -1,0 +1,6 @@
+org\openscience\cdk\modulesuites\MatomtypeTests.java
+org\openscience\cdk\coverage\AtomtypeCoverageTest.java
+org\openscience\cdk\config\atomtypes\OWLAtomTypeMappingReaderTest.java
+org\openscience\cdk\config\atomtypes\OWLAtomTypeMappingHandlerTest.java
+org\openscience\cdk\atomtype\SybylAtomTypeMatcherTest.java
+org\openscience\cdk\atomtype\mapper\AtomTypeMapperTest.java

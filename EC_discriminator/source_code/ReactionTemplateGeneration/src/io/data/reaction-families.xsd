@@ -1,0 +1,214 @@
+
+	<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+		<xs:element name="config" type="config" />
+		<xs:complexType name="config">
+			<xs:sequence>
+				<xs:element name="inp-temperature" type="xs:double" minOccurs="0" />
+				<xs:element name="inp-reaction-family" type="inp-reaction-family" minOccurs="1" maxOccurs="unbounded" />
+                <xs:element name="inp-product-constraints" type="inp-constraint" minOccurs="0" maxOccurs="unbounded" />
+			</xs:sequence>
+		</xs:complexType>
+		<xs:complexType name="inp-reaction-family">
+			<xs:sequence>
+				<xs:element name="bimolecular" type="xs:boolean" minOccurs="1" maxOccurs="1"/>
+				<xs:element name="inp-recipe" type="inp-recipe" minOccurs="0" />
+				<xs:element name="inp-reactant" type="inp-reactant" minOccurs="0" maxOccurs="unbounded"	/>
+				<xs:element name="inp-kinetics" type="inp-kinetics" minOccurs="0" maxOccurs="1" />
+			</xs:sequence>
+			<xs:attribute name="name" type="xs:string" use="required" />
+		</xs:complexType>
+		<xs:complexType name="inp-recipe">
+			<xs:sequence>
+				<xs:element name="inp-transformation" type="inp-transformation" minOccurs="1" maxOccurs="unbounded" />
+			</xs:sequence>
+		</xs:complexType>
+		<xs:complexType name="inp-reactant">
+			<xs:sequence>
+				<xs:element name="inp-reactive-center" type="inp-reactive-center" minOccurs="1" maxOccurs="unbounded" />
+                <xs:element name="inp-molecule-constraint" type="inp-constraint" minOccurs="0"	maxOccurs="unbounded" />
+			</xs:sequence>
+			<xs:attribute name="value" type="xs:int" use="required" />
+			<xs:attribute name="smarts" type="xs:string" use="required" />
+		</xs:complexType>
+		<xs:complexType name="inp-kinetics">
+			<xs:sequence>
+				<xs:element name="inp-reaction" type="inp-reaction" minOccurs="0" maxOccurs="unbounded" />
+				<xs:element name="inp-tunneling" type="inp-tunneling" minOccurs="0" maxOccurs="1" />
+				<xs:element name="rate-coeff" type="rate-coeff"
+					minOccurs="0" maxOccurs="unbounded" />
+				<xs:element name="inp-kinetic-reactive-center" type="inp-kinetic-ga-db"
+					minOccurs="0" maxOccurs="unbounded" />
+				<xs:element name="inp-kinetic-resonance-correction" type="inp-kinetic-ga-db"
+					minOccurs="0" maxOccurs="1" />
+                <xs:element name="inp-reactive-center-template" type="inp-reactive-center-template"
+					minOccurs="0" maxOccurs="unbounded" />
+			</xs:sequence>
+			<xs:attribute name="type" type="kineticsType" use="required" />
+			<xs:attribute name="path" type="xs:string" />
+		</xs:complexType>
+        <xs:complexType name="inp-reactive-center-template">
+			<xs:attribute name="symbol" type="symbolType" use="required" />
+			<xs:attribute name="x" type="xs:double" use="required" />
+            <xs:attribute name="y" type="xs:double" use="required" />
+            <xs:attribute name="z" type="xs:double" use="required" />
+        </xs:complexType>
+		<xs:complexType name="inp-reaction">
+			<xs:sequence>
+				<xs:element name="reactant" type="reactant" minOccurs="0" maxOccurs="unbounded" />
+				<xs:element name="product" type="product" minOccurs="0" maxOccurs="unbounded" />
+				<xs:element name="rate-coeff" type="rate-coeff"
+					minOccurs="1" maxOccurs="1" />
+			</xs:sequence>
+		</xs:complexType>
+		<xs:complexType name="reactant">
+			<xs:attribute name="identifier" type="xs:string" use="required" />
+		</xs:complexType>
+		<xs:complexType name="product">
+			<xs:attribute name="identifier" type="xs:string" use="required" />
+		</xs:complexType>
+		<xs:complexType name="inp-transformation">
+			<xs:attribute name="type" type="transformationType" use="required" />
+			<xs:attribute name="centers" type="xs:string" use="required" />
+		</xs:complexType>
+
+		<xs:complexType name="inp-reactive-center">
+			<xs:sequence>
+				<xs:element name="inp-atom-constraint" type="inp-constraint" minOccurs="0" maxOccurs="unbounded" />
+                <xs:element name="inp-non-reactive-center" type="inp-non-reactive-center" minOccurs="0" maxOccurs="1" />
+			</xs:sequence>
+			<xs:attribute name="symbol" type="symbolType" use="required" />
+			<xs:attribute name="smarts" type="xs:string" use="required" />
+			<xs:attribute name="neighbour" type="symbolType" />
+		</xs:complexType>
+        <xs:complexType name="inp-non-reactive-center">
+			<xs:attribute name="symbol" type="symbolType" use="required" />
+		</xs:complexType>
+		
+		<xs:complexType name="inp-kinetic-ga-db">
+			<xs:sequence>
+				<xs:element name="inp-kinetic-group" type="inp-kinetic-group" minOccurs="1" maxOccurs="unbounded" />
+			</xs:sequence>
+			<xs:attribute name="symbol" type="symbolType" />
+			<xs:attribute name="temperature" type="xs:double" />			
+		</xs:complexType>
+		<xs:complexType name="inp-kinetic-group">
+			<xs:attribute name="smarts" type="xs:string" use="required" />
+			<xs:attribute name="DA" type="xs:double" use="required" />
+			<xs:attribute name="DEa" type="xs:double" use="required" />
+			<xs:attribute name="DN" type="xs:double"/>
+			<xs:attribute name="comments" type="xs:string" />
+		</xs:complexType>
+		<xs:complexType name="rate-coeff">
+			<xs:sequence>
+				<xs:element name="inp-steric-relation" type="inp-steric-relation" minOccurs="0" maxOccurs="unbounded" />
+			</xs:sequence>
+			<xs:attribute name="A" type="xs:double" use="required" />
+			<xs:attribute name="N" type="xs:double"/>
+			<xs:attribute name="Ea" type="xs:double"/>
+			<xs:attribute name="wbwf" type="xs:double"/>
+			<xs:attribute name="ep-constant" type="xs:double"/>
+			<xs:attribute name="ep-alpha" type="xs:double"/>			
+			<xs:attribute name="vp" type="xs:double"/>
+			<xs:attribute name="comments" type="xs:string" />
+		</xs:complexType>
+
+		
+		<xs:complexType name="inp-constraint">
+			<xs:attribute name="type" type="constraintType" use="required" />
+			<xs:attribute name="limit" type="limitType" />
+			<xs:attribute name="param" type="xs:string" />
+			<xs:attribute name="value" type="xs:int" />
+		</xs:complexType>
+		
+		<xs:complexType name="inp-tunneling">
+			<xs:attribute name="expression" type="xs:string" use="required" />
+		</xs:complexType>
+		<xs:complexType name="inp-steric-relation">
+			<xs:sequence>
+				<xs:element name="inp-substituent" type="inp-substituent" minOccurs="1" maxOccurs="unbounded" />
+			</xs:sequence>
+			<xs:attribute name="stereo" type="stereoType" use="required" />
+			<xs:attribute name="type" type="stericType" use="required" />
+		</xs:complexType>
+		
+		<xs:complexType name="inp-substituent">
+			<xs:sequence>
+				<xs:element name="inp-chiral-center" type="inp-chiral-center" minOccurs="1" maxOccurs="1"/>
+			</xs:sequence>
+			<xs:attribute name="smarts" type="xs:string" use="required" />
+		</xs:complexType>
+		<xs:complexType name="inp-chiral-center">
+			<xs:attribute name="smarts" type="xs:string" use="required" />
+		</xs:complexType>
+		
+		<!-- Restrictions: -->
+		<xs:simpleType name="symbolType">
+				<xs:restriction base="xs:string">
+					<xs:pattern value="[A-Z]"/>
+				</xs:restriction>
+		</xs:simpleType>
+		
+		<xs:simpleType name="constraintType">
+		  <xs:restriction base="xs:string">
+		    <xs:enumeration value="NO_SINGLE_ELECTRONS"/>
+		    <xs:enumeration value="IS_NOT_AROMATIC"/>
+		    <xs:enumeration value="ATOMCOUNT"/>
+		    <xs:enumeration value="DOUBLEBONDCOUNT"/>
+		    <xs:enumeration value="SINGLEELECTRONCOUNT"/>		    
+		    <xs:enumeration value="SSSRINGCOUNT"/>
+		    <xs:enumeration value="AROMATICATOMSCOUNT"/>
+            <xs:enumeration value="HEAVYATOMCOUNT"/> 
+            <xs:enumeration value="STRUCTURE"/>            
+		  </xs:restriction>
+		</xs:simpleType>
+		
+		<xs:simpleType name="limitType">
+		  <xs:restriction base="xs:string">
+		    <xs:enumeration value="EQ"/>
+		    <xs:enumeration value="MAX"/>
+		    <xs:enumeration value="MIN"/>
+		  </xs:restriction>
+		</xs:simpleType>
+		
+		<xs:simpleType name="stereoType">
+		  <xs:restriction base="xs:string">
+		    <xs:enumeration value="CIS"/>
+		    <xs:enumeration value="TRANS"/>
+		  </xs:restriction>
+		</xs:simpleType>
+		
+		<xs:simpleType name="stericType">
+		  <xs:restriction base="xs:string">
+		    <xs:enumeration value="REACTANTS"/>
+		    <xs:enumeration value="PRODUCTS"/>
+		  </xs:restriction>
+		</xs:simpleType>
+		
+		<xs:simpleType name="kineticsType">
+		  <xs:restriction base="xs:string">
+		    <xs:enumeration value="ARRHENIUS"/>
+            <xs:enumeration value="AB_INITIO"/>
+		    <xs:enumeration value="EVANS_POLANYI"/>
+		    <xs:enumeration value="GROUP_ADDITIVITY"/>
+		    <xs:enumeration value="REVERSE"/>
+		    <xs:enumeration value="BLOWERS_MASEL"/>
+		    <xs:enumeration value="TEMP_INDEPENDENT_RATE"/>
+		    <xs:enumeration value="LIBRARY"/>	
+            <xs:enumeration value="RATE_RULE"/>            
+		  </xs:restriction>
+		</xs:simpleType>
+		
+		<xs:simpleType name="transformationType">
+		  <xs:restriction base="xs:string">
+		    <xs:enumeration value="INCREASE_BOND"/>
+		    <xs:enumeration value="DECREASE_BOND"/>
+		    <xs:enumeration value="FORM_BOND"/>
+		    <xs:enumeration value="BREAK_BOND"/>
+		    <xs:enumeration value="GAIN_RADICAL"/>
+		    <xs:enumeration value="LOSE_RADICAL"/>		    
+		    <xs:enumeration value="GAIN_CHARGE"/>
+		    <xs:enumeration value="LOSE_CHARGE"/>	
+		  </xs:restriction>
+		</xs:simpleType>
+		
+	</xs:schema>

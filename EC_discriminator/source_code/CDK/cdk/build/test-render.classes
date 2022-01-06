@@ -1,0 +1,11 @@
+org\openscience\cdk\renderer\SomeParam*.class
+org\openscience\cdk\renderer\RendererModelTest*.class
+org\openscience\cdk\renderer\generators\parameter\AbstractGeneratorParameterTest*.class
+org\openscience\cdk\renderer\elements\TextElementTest*.class
+org\openscience\cdk\renderer\color\RasmolColorsTest*.class
+org\openscience\cdk\renderer\color\PartialAtomicChargeColorsTest*.class
+org\openscience\cdk\renderer\color\CPKAtomColorsTest*.class
+org\openscience\cdk\renderer\color\CDKAtomColorsTest*.class
+org\openscience\cdk\renderer\color\CDK2DAtomColorsTest*.class
+org\openscience\cdk\modulesuites\MrenderTests*.class
+org\openscience\cdk\coverage\RenderCoverageTest*.class

@@ -1,0 +1,11 @@
+org\openscience\cdk\pharmacophore\PharmacophoreUtilityTest.java
+org\openscience\cdk\pharmacophore\PharmacophoreQueryTest.java
+org\openscience\cdk\pharmacophore\PharmacophoreQueryBondTest.java
+org\openscience\cdk\pharmacophore\PharmacophoreQueryAtomTest.java
+org\openscience\cdk\pharmacophore\PharmacophoreQueryAngleBondTest.java
+org\openscience\cdk\pharmacophore\PharmacophoreMatcherTest.java
+org\openscience\cdk\pharmacophore\PharmacophoreBondTest.java
+org\openscience\cdk\pharmacophore\PharmacophoreAtomTest.java
+org\openscience\cdk\pharmacophore\PharmacophoreAngleBondTest.java
+org\openscience\cdk\modulesuites\MpcoreTests.java
+org\openscience\cdk\coverage\PcoreCoverageTest.java

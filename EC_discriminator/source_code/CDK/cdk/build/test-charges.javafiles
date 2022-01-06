@@ -1,0 +1,10 @@
+org\openscience\cdk\modulesuites\MchargesTests.java
+org\openscience\cdk\coverage\ChargesCoverageTest.java
+org\openscience\cdk\charges\StabilizationChargesTest.java
+org\openscience\cdk\charges\PolarizabilityTest.java
+org\openscience\cdk\charges\PiElectronegativityTest.java
+org\openscience\cdk\charges\InductivePartialChargesTest.java
+org\openscience\cdk\charges\GasteigerPEPEPartialChargesTest.java
+org\openscience\cdk\charges\GasteigerMarsiliPartialChargesTest.java
+org\openscience\cdk\charges\ElectronegativityTest.java
+org\openscience\cdk\charges\AtomTypeChargesTest.java

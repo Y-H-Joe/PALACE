@@ -1,0 +1,5 @@
+org\openscience\cdk\tools\AtomicPropertiesTest*.class
+org\openscience\cdk\qsar\descriptors\DescriptorTest*.class
+org\openscience\cdk\qsar\DescriptorExceptionTest*.class
+org\openscience\cdk\modulesuites\MqsarTests*.class
+org\openscience\cdk\coverage\QsarCoverageTest*.class

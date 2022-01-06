@@ -1,0 +1,10 @@
+org\openscience\cdk\modulesuites\MlibiocmlTests.java
+org\openscience\cdk\libio\cml\ConvertorTest.java
+org\openscience\cdk\io\MDLCMLRoundtripTest.java
+org\openscience\cdk\io\CMLWriterFactoryTest.java
+org\openscience\cdk\io\cml\CMLRoundTripTool.java
+org\openscience\cdk\io\cml\CMLRoundTripTest.java
+org\openscience\cdk\io\cml\CML2WriterTest.java
+org\openscience\cdk\io\cml\CML2Test.java
+org\openscience\cdk\io\cml\CDKRoundTripTest.java
+org\openscience\cdk\coverage\LibiocmlCoverageTest.java

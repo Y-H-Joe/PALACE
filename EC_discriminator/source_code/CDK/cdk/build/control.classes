@@ -1,0 +1,5 @@
+org\openscience\cdk\controller\UndoAdapter*.class
+org\openscience\cdk\controller\SwingMouseEventRelay*.class
+org\openscience\cdk\controller\SwingEventRelay*.class
+org\openscience\cdk\controller\IViewEventRelay*.class
+org\openscience\cdk\controller\IMouseEventRelay*.class

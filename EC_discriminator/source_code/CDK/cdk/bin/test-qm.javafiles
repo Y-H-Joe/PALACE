@@ -1,0 +1,3 @@
+org\openscience\cdk\modulesuites\MqmTests.java
+org\openscience\cdk\math\qm\GaussiansCalculationTest.java
+org\openscience\cdk\coverage\QmCoverageTest.java

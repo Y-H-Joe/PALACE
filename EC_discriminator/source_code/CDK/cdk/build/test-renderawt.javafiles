@@ -1,0 +1,4 @@
+org\openscience\cdk\renderer\visitor\AWTDrawVisitorTest.java
+org\openscience\cdk\renderer\visitor\AbstractAWTDrawVisitorTest.java
+org\openscience\cdk\modulesuites\MrenderawtTests.java
+org\openscience\cdk\coverage\RenderawtCoverageTest.java

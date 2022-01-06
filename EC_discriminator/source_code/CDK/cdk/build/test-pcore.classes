@@ -1,0 +1,11 @@
+org\openscience\cdk\pharmacophore\PharmacophoreUtilityTest*.class
+org\openscience\cdk\pharmacophore\PharmacophoreQueryTest*.class
+org\openscience\cdk\pharmacophore\PharmacophoreQueryBondTest*.class
+org\openscience\cdk\pharmacophore\PharmacophoreQueryAtomTest*.class
+org\openscience\cdk\pharmacophore\PharmacophoreQueryAngleBondTest*.class
+org\openscience\cdk\pharmacophore\PharmacophoreMatcherTest*.class
+org\openscience\cdk\pharmacophore\PharmacophoreBondTest*.class
+org\openscience\cdk\pharmacophore\PharmacophoreAtomTest*.class
+org\openscience\cdk\pharmacophore\PharmacophoreAngleBondTest*.class
+org\openscience\cdk\modulesuites\MpcoreTests*.class
+org\openscience\cdk\coverage\PcoreCoverageTest*.class

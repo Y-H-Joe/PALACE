@@ -1,0 +1,11 @@
+org\openscience\cdk\modulesuites\MdictTests.java
+org\openscience\cdk\dict\OWLReactTest.java
+org\openscience\cdk\dict\OWLFileTest.java
+org\openscience\cdk\dict\EntryTest.java
+org\openscience\cdk\dict\EntryReactTest.java
+org\openscience\cdk\dict\DictionaryTest.java
+org\openscience\cdk\dict\DictDBTest.java
+org\openscience\cdk\dict\DictDBReactTest.java
+org\openscience\cdk\dict\AbstractEntryTest.java
+org\openscience\cdk\dict\AbstractDictionaryTest.java
+org\openscience\cdk\coverage\DictCoverageTest.java

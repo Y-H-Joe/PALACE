@@ -1,0 +1,1007 @@
+CHANGELOG $Date$
+------------------------------------
+
+Changes in CVS
+------------------------------------
+New:
+* Added classes for permuting the order of atoms in an AtomContainer (graph.AtomContainerAtomPermutor)
+* AtomPlacer now draws 180 deg geometry when encountering triple bonds
+* JChemPaint sources reintegrated to applications.jchempaint package
+* Added new method MFAnalyser.getHTMLMolecularFormulaWithCharge()
+* Added new methods SetOfAtomContainers.removeAtomContainer()
+* Added a CDKRXNWriter.
+* Atom type list for PDB atom codes (implements RFE #1062516)
+* Implemented an iterating (event based) CML reader (implements RFE #824133)
+* ReaderFactory now uses the new CDK set io-formats instead of
+  hardcoding the recognized formats
+* The PluginManager now adds the plugin menu to the plugin
+  window (implements RFE #954356)
+* Jmol API and IO from CVS HEAD on 10.05
+* Added AminoAcid templates
+* The libio.cml.Convertor now also accepts AtomContainer
+* Added customization of atom color for Renderer[2D|3D]Model 
+  (closes RFE #949751)
+* Added the new method CDKPluginInterface.getPluginLicense()
+* Added the new method CDKEditBus.runScript()
+* CML2 from Jumbo 4.6 was uploaded
+* Added rendering of radicals (SingleElectron)
+* Added reading of 'M  RAD' from MDL molfiles
+* Added writing and reading of radicals in CML2
+* Added getRelevantAtomContainer(ChemObject, Bond) to cdk.tools.manipulators
+* Implemented reading of data items from MDL SD files (closes RFE #1177112)
+* Added cdk.index.CASNumber.calculateCheckBit()
+* Added the new class PDBAtom with field for PDB specific information
+* Added a CML Customizer interface which reduces the CDK module dependency
+  of the libio-cml module
+* Added two new module for outputting data for specific CDK modules:
+  pdb-cml for outputting PDBAtom information, and qsar-cml for outputting
+  QSAR-descriptor information
+
+Fixes:
+* Fixed KabschAlignment so that the rotation matrix, U, is returned properly
+* Fixed junit-test and run-test: missing cdk-data.jar
+* Don't consume Exceptions while writing MDL
+* Removed entry for 'D' in the isotope list; '2H' is still present
+  (closes #1118689)
+* Fail more informative on (corrupt) MDL files that lack the property block
+* Fixed API detection in CDKPluginManager when distributing change events
+* Fixed returning of SingleElectron's with AtomContainer
+  .getConnectedElectronContainers(Atom)
+* Fixed retaining LonePair's and SingleElectron's when using
+  ConnectivityChecker.partitionIntoMolecules()
+* Fixed showing ElectronContainers in the cdk.apps.swing.ChemObectTree
+* The IteratingMDLReader can now also read MDL molfiles with only one
+  molecule (closes #1172425)
+* Fixed output of CML2 for reactions with IDs
+* CDK IO is now fully supports InputStream (closes #1169385)
+* Fixed error in isotope list (closes #1185991)
+* Fixed reading of Z from CrystClust files
+* AtomPlacer now draws linear geometries for C#C and C=C=C (closes #937743)
+* Fixed reading of explicit single bonds in SMILES (closes #1175478)
+* Fixed false handling of terminal branched groups in Fingerprinter (closes #934819 and #931608)
+* No overlapping atoms in layout (fixes #938761)
+* CML is now available for Java1.5 too
+* Fixed misuse of ready() in MDLReader which cause problems when reading
+  over the internet (closes #1185551)
+
+API changes:
+* Moved IsotopeFactory from cdk-standard to the cdk-core module
+* Descriptor.calculate() now returns a DescriptorValue instead of
+  DescriptorResult.
+* Removed LoggingTool(boolean) and LoggingTool(Object, boolean)
+  (closes #1150670) because configuration should be done at application level
+* Renamed ValencyCheckerInterface.calculateMissingHydrogen() to
+  .calculateNumberOfImplicitHydrogens()
+* PDB fields are now read into the new PDBAtom fields instead of the previously
+  used ChemObject properties defined in CDKConstants
+* The cdk.layout.TemplateHandler now uses CML2 files (implementing RFE #1175952)
+
+20050125 Release
+------------------------------------
+New:
+
+Fixes:
+* Fixed detection of class binaries of Doclets required to compile the CDK
+* Added missing radius field info for AtomType.toString()
+* Fixed syntax error in Accelerated3DRenderer
+* Added missing build.props to source releases
+* Added missing doc/javadoc doclet classes to source releases
+* The source releases contained unnecessary libraries
+
+API changes:
+* Removed deprecated methods from LoggingTool
+
+20050116 Release
+------------------------------------
+New:
+* Added a 3D starting structure generator for small molecules
+* Added charges.Polarizability
+* File format detection for Spartan, Q-Chem, NWChem and Ghemical SPM files
+* Added WHIM and BCUT descriptors
+* Added new QSAR classes: DescriptorSpecification and DescriptorValue
+* Added a DescriptorEngine to apply a set of descriptors to a Molecule
+* Made the CML2 Convertor QSAR aware: added serialization of DescriptorValue
+  properties
+* Added a command line util to calculate descriptors for a SDF file and that
+  saves it as CML2
+* The build.xml system now defines the @cdk.set JavaDoc tag to group a set
+  of CDK classes, e.g. Descriptor's or ChemFormat's
+* Added a IteratingSMILESParser
+* Added getNaturalMass to MFAnalyser, giving mass as average of isotopes
+* Added *Manipulator.addAtomProperties()
+* The core module classes are now checked for coverage of JUnit testing
+* Added a radial distribution function (RDF) calculator
+* Added a new LoggingTool(Class) constructor for easier use in static classes
+
+Fixes:
+* Fixed format detection for Jaguar, Gamess and the HIN format: they were
+  not specific enough
+* Fixed output of molecule ID and title in Convert for CML2
+* Fixed definition of N.sp2 which has 2 (not 3) formal neighbours
+* Fixed building CDK with Ant 1.5.x
+* PDBReader now uses static final String to set PDB properties leading to a
+  1/3rd speed up for reading PDB files
+* The PDBReader now stores the PDB atom type with AtomType.setAtomTypeName()
+  (closes #1085910)
+* Added missing Ring.toString() and RingSet.toString() methods
+* Fixed setting of undefined stereoparity in PseudoAtom constructor
+* The ChemObject listeners and properties no longer get initialized when a query
+  is done
+* Fixed NullPointerException problems in ChemModel.clone()
+* Fixed SetOfReactions.clone() method
+* Fixed AtomParity.clone() method
+* Added missing RingSet.toString() method
+* Fixed SMILES generations for rings with double bonds (closes #1089770)
+
+API changes:
+* Moved SingleElectron to the core module
+* Descriptor.getSpecification() now returns a DescriptorSpecification object
+* The build.xml now builds cdk-$version.jar instead of cdk-all.jar
+* Descriptor.calculate() now returns a DescriptorResult object
+* Moved SmilesViewerforDeterministicGenerator into cdk.applications.demo
+* MDL SDF files are now read as a ChemSequence of ChemModel's instead of a
+  SetOfMolecules
+* Moved Ring.toString(Molecule) to only user RingSearchTest
+* Removed RingSet.reportRingList(Molecule) and RingSet.toString(Molecule)
+* Moved RingSet.get2DCenter() to GeometryTools 
+* Moved AtomContainer.get2DCenter() and .get3DCenter() to GeometryTools
+* Moved RingSet.getRingSetInAtomContainer() to RingSetManipulator.getAllInOneContainer()
+* Moved RingSet.sort(), .getHeaviestRing() and .getMostComplexRing() to RingSetManipulator
+* Removed deprecated method AtomContainer.getHighestCurrentBondOrder()
+* Fixed signature to AtomContainer.setElectronContainers[ElectronContainers[])
+  which has Bond[] as parameter
+* Moved AtomContainer.unregisterAtomListeners() and .unregisterElectronContainerListeners()
+  to AtomContainerManipulator
+* The files from the former core module are now in the new data module
+* LoggingTool moved from the core to the standard module
+
+20041201 Release
+------------------------------------
+New:
+* Added isomorphism.ConjugatedPiSystemsDetector
+* ChemFormat and ChemFormatMatchers interfaces in new io.formats package
+* Added charges.GasteigerMarsiliPartialCharges calculation
+* Added charges.AtomTypesCharges class to assign charges to atom types
+
+Fixes:
+* Split file format matching from file reading reducing the requirements
+  for format detection
+* More JavaDoc cleanup
+* Fixed wrong element types in the valency atom type list (closes #1057016)
+* Extended build/test system to conditionally build/test non-Java5 stuff 
+  with Java5 (closes #1038316)
+* CML output marked as Java 1.4 only
+* Fixed ClassCastException in cdk.internet.DADMLReader
+
+API changes:
+* ChemObjectIO.getFormatName() is replaced by ChemObjectIO.getFormat()
+* ReaderFactory.getFormat() now returns a ChemFormat object
+
+20041015 Release
+------------------------------------
+New:
+
+Fixes:
+* UniversalIsomorphismTester works with QueryAtomContainers
+* Now compiles with Java 1.5.0 aka 5.0 (but CML does not test correctly)
+* Faster SSSR algorithms
+* The core class now notify their listeners when things are changed
+* ChangeEvents are now propagated through the container hierarchy
+  from AtomContainer via SetOfMolecules up to the ChemFile level
+* Fixed returning of one of the IO settings in io.program.GaussianInputWriter
+
+API changes:
+
+20040917 Release
+------------------------------------
+New:
+* Added the cdk.graph.matrix package
+* SmilesGenerator can handle ring configurations which are not chiralities
+* Re-implementation of SSSRFinder with Berger-Gritzmann-deVries Algorithm
+* Added jgrapht graph theory library
+* Added MoleculeGraphs (to create a molecule graph for use with jgrapht) 
+* Added some graph algorithms (BiconnectivityInspector, MinimalPathIterator)
+* Added the cdk.ringsearch.cyclebasis package (Cycle, CycleBasis, 
+  SimpleCycleBasis) for the new SSSRFinder
+* Added INChI parser for its plain text output
+* Added missing getAllIDs() methods to AtomContainer and SetOfAtomContainers
+  manipulators
+* Added a method ChemObject.getListenerCount() used at least for JUnit testing
+* Added a TreeListener to the ChemObjectTree
+* The ChemObject tree is now fully expanded by default
+
+Fixes:
+* Partly cleaned up source code of core classes using the PMD reports
+* Partly cleaned up JavaDoc of core classes using the DocCheck reports
+* Split up Controller2D ELEMENT and SYMBOL mode: the first uses the drawing
+  element, while the second implements the common element toggling
+* Fixed creation of IDs for SetOfMolecules (closes #JCP 1000637)
+* Fixed creation of IDs for Bond's
+* CMLRSSHandler now propagates whitespace from CML fragments
+* Fixed output or aromatic bonds in MDLWriter
+* Fixed a NullPointerException problem in ChemObject.setProperties()
+* Fixed build.xml to allow compile of doclets on MacOS/X (closes #1001497)
+* All classes that require Swing are now marked with '@cdk.require swing'
+  (closes #847584)
+
+API changes:
+* Moved AtomContainer.getAdjacencyMatrix to cdk.graph.matrix.AdjecencyMatrix
+* Moved AtomContainer.getConnectionMatrix to cdk.graph.matrix.ConnectionMatrix
+* Cleaned up Crystal API by using Vector3d for the axes
+* Made a few class fields private in core classes which were protected sofar
+* Deprecated old usage of SSSRFinder
+* Added a method ChemObject.shallowCopy()
+* ChemObject.clone() for all core classes now does a deep clone
+
+20040626 Release
+------------------------------------
+New:
+
+Fixes:
+* Fixed build.xml for not copying the configuration files (closes #978724
+  and #978734)
+* Fixed reading and writing of partial atomic charges (closes #969710)
+
+API changes:
+
+20040622 Release
+------------------------------------
+New:
+* Added MFAnalyser.removeHydrogensPreserveMultiplyBonded() method
+* Added CDKEditBus.setChemModel(Reader)
+* Added IUPAC/NIST Chemical Identifier reader
+* The MDLReader will reuse the ChemObject given to read(ChemObject)
+* Added UniversalIsomorphismTester.makeAtomsMapsOfBondsMaps() method
+* Added an experimental JMEReader wrapping a Jmol v10 IO class
+* Implemented Jmolv10 to CDK Converter
+* Readded element toggling between common elements in SYMBOL mode
+  in Controller2D
+* Added cdk.applications.APIVersionTester for testing version numbers
+* FileConvertor now makes use of Apache's CommandLineInterface
+* Added AtomColorer.getAtomColor(Atom, Color) (closes RFE #949751)
+* Added a wrapper for Jmol's MOPAC 93/97/2002 reader
+* Added a AtomParity class which can be stored in AtomContainer
+* Mol2 atom types now include hybridization which is now also read
+* SubstructureFinder now uses the SMARTS engine
+* Renderer2D font can now be set (closes JCP RFE #901009)
+* Renderer2D now has a field for using AntiAliasing
+
+Fixes:
+* Tropylium is now recognized as aromatic (closes CDK bug #957627)
+* No longer calculates 2D coords for hydrogens which already have 2D coords
+  in HydrogenPlacer
+* Fixed output of CML bond orders for bonds with CDKConstants.BONDORDER_AROMATIC
+* Added missing cdk:bondOrder dictRef for CML2 output CDK's double bond orders
+* Make sure to draw an atom label for charged atoms (closes JCP #957625)
+* FileConvertor now really implements some of its features
+* Fixed rendering or aromatic rings with circles (closes #960709)
+* Fixed Mol2 reader (closes #964216)
+* Fixed SmilesGenerator: now takes into account sp2 states (closes #957632)
+* FileFormatGuesser should use ChemObjectIO.getFormatName()
+* cdk-all is now a self containing one-jar big CDK library 
+  (try java -jar cdk-all.jar)
+* Fixed SMILES parser into correct four step procedure using the new
+  hybridization atom type list (closes #957624)
+
+API changes:
+* AtomTypeFactory and IsotopeFactory moved from cdk.tools to cdk.config
+* Moved atom type and isotope config files to cdk.config.data
+* The Renderer2D now explicitly requires a Graphics2D (which the Graphics
+  object subclasses in Java1.2 and higher)
+
+20040513 Release
+------------------------------------
+New:
+* Added AtomType.get/setHybridization() method
+* Added tools.LoggingTool.debug(Object, boolean)
+* Added infrastructure for a SMARTS parse
+* Added tools.ValencyCheckerInterface.calculateMissingHydrogen(Atom) method
+* Added tools.ValencyChecker.saturate() to fix bond orders
+* AtomType definitions in XML are now in CML2 format
+
+Removed:
+* Removed CDKInputAdapter. Use (Popup)Controller2D directly
+* Removed StandardIsotopes class, use IsotopeFactory instead (closes #932480)
+
+Fixes:
+* Fixes canonical smiles of molecules with charged atoms (bug #848887)
+* Fixed subset problem in FingerPrinter closes (bug #853254 and partly #799672)
+* Fixed event throwing when PeriodicTablePanel button was pushed
+* Fixed CDKPluginManager.loadPlugins(): do not reset the hash
+* Take symbol as default for drawn string in Renderer2D.paintPseudoAtomLabel()
+* Label for PseudoAtom created from Atom is atom's symbol
+* Fixed replacing an PseudoAtom by an EnzymeResidueLocator in MACiEReader
+  (closes JCP bug #850154)
+* MDLReader now 'actively' checks if atom is an element
+* Fixed DefaultChemObjectReader so that it checks whether a listener is a
+  ReaderListener before trying to cast it
+* Fixed constructor of MACiEReader which resulted in a NPE
+* MACiEReader now actually throws an frameRead event when a frame is read
+* Added better output about missing src/*.javafiles
+* Updated Xerces to version 2.6.2 which fixes a CML serialization bugs
+  (closes #930489)
+* Fixed rendering of non-ring bonds marked as aromatic (closes #927342)
+* Fixed the SMILES parser which now perceives aromaticity at the end of
+  the parsing (closes #927341)
+* Fixed checking of CAS numbers
+* Make sure to also draw proposed bonds when there is nothing else to be 
+  drawn (closes JCP #886944)
+* Fixed Controller2D to not show a proposed bond when dragging from a bond
+  (closes JCP #932378, JCP #933601, JCP #933600, JCP #846617)
+* Rings no longer get drawn more than needed (closes #949681)
+* Make sure to set drawing color when drawing aromatic rings (closes #949738)
+
+API changes:
+* cdk.tools.manipulator.SetOf(AtomContainers|Molecules)Manipluator.
+  getTotalFormalCharge returns double instead of int
+* Moved *Manipulator from cdk.tools into cdk.tools.manipulator
+* PopupController2D.getPopupMenu() now also checks for popup menu's of super
+  classes
+* Moved Primes from cdk.smiles to cdk.math
+* Moved RandomNumbersTool and PathTools from cdk.tools to cdk.math
+* Moved ConnectivityChecker from cdk.tools to cdk.graph
+* Moved cdk.tools.Projector to cdk.geometry
+* The ValencyChecker no longer fails (but warns to the logger) about atoms not
+  in the atom type list
+* getPoint2D() in the core classes (e.g. Atom) have been renamed to getPoint2d()
+  to match the lower case 'd' in the actual class returned Point2d
+* Renamed cdk.graph.invariant.exception.MatrixIndexOutOfBoundsException to
+  IndexOutOfBoundsException so that Debian tar won't mess up the file name in the
+  package/tar/cdk tar.gz package
+* Atom type names in XML based format are changed to match CML2 restrictions
+
+20040324 Release
+------------------------------------
+New:
+* The CDKPluginManager will only load the plugin with the highest version
+* Added IO settings for CMLWriter for the namespace prefix and the Schema
+  Instance Location attribute
+* A Renderer2D subclass that uses masks for making backgrounds empty
+  (closes #889829)
+* Added a ZMatrixTools.zmatrixToCartesian() method
+* PeriodicTablePanel is now interactive. You can register as a CDKListener and 
+  will be notified of users selecting a particular element, which you can then get by 
+  psepanel.getSelectedElement().
+* Implemented GamessReader
+* Added parsing reaction specifications in SMILES
+* Added field to Reaction for agents, like catalysts
+* Added generation of reaction SMILES
+* Added creation of atom-atom mappings in reactions
+* The UniversalIsomorphism is a bit more generalized to allow for more flexible
+  Atom and Bond matching.
+
+Removed:
+* Viewer application. Use JChemPaint (jchempaint.sf.net) or Jmol (jmol.sf.net) instead
+* CDK core debug patch (was incomplete and experimental)
+
+Fixes:
+* A nasty threading bug in StructureDiagramGenerator has been fixed, preventing 
+  users from running multiple instances of SDG in seperate threads (closes # 837827).
+* Removed all static methods and, most importantly, a static molecule(!) variable 
+  from AtomPlacer, which is likely to have caused the problems with hanging layout threads.
+* Fixed calculation of cartesian atomic coordinates from fractional coordinates
+  in CrystalGeometry
+* Cleaned up import statements
+* Fixed writing of MDL mol with PseudoAtom's (closes #890456)
+* ZMatrixReader no longer includes generic code (closes #871699)
+* CDK only JavaDoc tags now use the format @cdk.X, so that JavaDoc no longer complains
+* Fixed IteratingMDLReader: added missing readLine() statement and added missing newlines
+  to the buffer send to MDLReader. Also fixed throwing of an exception as the interface
+  describes (closes #895973)
+* Fixed handling of CML content in RSS channel when no namespace prefix was used
+* Fixed handling of CML conventions: don't compare new convention with itself,
+  and all convention handlers already subclass CMLCore convention, so don't reset
+  to CMLCore convention when CML convention found
+* ValencyChecker now throws a CDKException when the checked atom is not known
+  (closes JCP #903412) but not for PseudoAtom's
+* ChemObject.getID() was "" by default; corrected to null
+* Fixed reading of aromatic bonds ('A') from CML (closes #903379)
+* Fixed rendering of atom-atom mappings
+* Fixed reading of atom-atom mappings from MDL RXN files
+* Fixed deleting of single carbon with Controller2d (closes JCP #906910)
+
+API changes:
+* Changed SetOfAtomContainers.getAtomContainerMultiplier() to .getMultiplier()
+* Renderer2D.getScreenSize() and .getScreenCoordinates() are now protected
+* LoggingTool methods now accept Objects and convert them toString internally
+* CDKPluginInterface.setPropertyDirectory() was added
+* Reaction.getReactants() and .getProducts() now return a SetOfMolecules
+* Added setReader(Reader) method to ChemObjectReader so that it can allow instantiating
+  a usefull class first by ClassLoader.loadClass().getInstance() and then set the Reader
+* Matching of file formats has moved into the available Readers matches() methods
+* Added event handling to plugin API to get warned when ChemModel has changed
+* IDCreator has completely changed. See new JavaDoc.
+
+20040202 Release
+------------------------------------
+New:
+* Added a JPanel of the periodic table
+* Added a reader and writer for Hyperchem HIN files
+* Added Ant doc.xml build file for converting documentation to HTML
+* MDLRXNReader now accepts ChemFile, so it can be used by FileConvertor
+* CMLWriter now outputs namespaced CML2
+* Extended DADMLReader to support URI's like dadml://any/CAS-NUMBER?50-00-0
+
+Fixes:
+* Fixed layout of aliphatic structures (closes bug #889027)
+* cdk-* shell wrapper now accept -X java options (closes #882990)
+* Refactored build process (closes #883519)
+* Fixed rendering of stereo bonds in rings (closes #884935)
+* Fixed parsing of [H]-like thingies (closes #881330, #862930, #809412)
+* Also store inversed stereo chemistry in MDL mol files (closes #885512)
+* Fixed reading of unit cell angles
+
+API changes:
+* Moved a number of Swing based classes to cdk.applications.swing (addresses #847584)
+* The distribution of classes among cdk-*.jar has slightly changed due
+  to the new build process. Do 'ant compile.init' and look in cdk/src/*.classes
+  to see in which jar classes end up.
+* Added a getPluginVersion() method to the plugin API
+* Moved bond.getLength() to cdk.geometry.GeometryTools (closes #874901)
+
+20040120 Release
+------------------------------------
+New:
+* An interface for iterated reading of data from a file, e.g. a SDF file.
+* Added Atom field for fractional coordinates as used in crystal representation
+* Added missing SetOfAtomContainer class
+* Added a limitations task to build.xml to show known limitations of implemented
+  algorithms (closes #825454)
+* The Controller2D now maintains an active draw element. Changing the element of
+  an existing atom using the SYMBOL mode, also changes the draw element.
+* Added a SingleElectron class to be able to represent radicals
+* Added method for id-ing SetOfAtomContainers, Reaction and SetOfReactions
+* Added trigger to auto update of number of implicit hydrogens 
+  (implements JCP RFE #813152)
+* Added a loadPlugin(String pluginClassName) method to the CDKPluginManager
+* New methods for detecting file format using an InputStream; Gziped files can
+  be analyzed too now.
+* Added ValencyCheckerInterface that provides a general API to SaturationChecker
+  and the alternative (experimental) ValencyChecker
+* HydrogenAdder can use the new alternative (experimental) ValencyChecker
+* Added LoggingTool(Object) constructor, which allows new LoggingTool(this)
+* Applied lazyCreation patch to source code, it's no longer an optional patch
+
+Fixes:
+* Added missing get() methods to cdk.applications.plugin.EditBus interface
+* Added use of LoggingTool in a few classes (closes #827341 and #826991)
+* Removed use of 1.4 only Exception.getStackTrace() in LoggingTool
+* Fixed remaining JavaDoc errors (except warnings about missing Java3D)
+  (closes #820499)
+* JavaDoc now uses @depends for runtime dependencies and @builddepends for
+  compile dependencies for jar libraries (closes #814294)
+* Added missing toString() methods to SetOfMolecules and SetOfReactions
+* Fixed coordinate system of Renderer2D (partly fixes #834515)
+* Deal with charges and H is special case (closes JCP bug #850143)
+* Fixed writing of SDF files (closes #870911)
+* Made all CDKConstants  really constant (i.e. final)
+* Fixed method: make sure to overwrite old value if number of missing Hs is zero
+* Don't try to validate pseudo atoms (closes JCP bug #829038)
+* Fixed parsing of [H+] SMILES string (closes #873783)
+* AtomTypeFactory no longer tries to configuer PseudoAtom's (which it can't)
+* No longer ignores setting when outputing XML decleration in CMLWriter
+
+API changes:
+* SetOfMolecules now extends SetOfAtomContainers which gives it additional
+  methods like addAtomContainer().
+* Renamed color property to have the org.openscience.cdk prefix
+* The coordinate system of Renderer2D has been fixed
+* Renderer2DModel.getBackgroundDimension() now returns the active dimensions
+* Added a getFormatName() method to the ChemObjectIO interface
+* Moved formal charge from Atom to AtomType (implements RFC #25)
+* Remove ChemObject.init() method, should be done in constructor
+
+20031017 Release
+------------------------------------
+New:
+* IUPAC Name parser added, thanks to University of Manchester (Req. ANT >= 1.6alpha)
+* Added a method AtomContainer.removeAllBonds()
+* A rebond() method in cdk.graph.rebond that calculates bond from 3D coordinates
+* Added missing getInstance(InputStream) method (fixes #810511)
+* Implemented the --rebondFrom3DCoordiantes and --addHydrogens options for
+  applications.FileCovertor
+* Added IOWriter that generates CDK source code
+* Added new, alternative method to saturate a molecule by adjusting bond orders
+* Implemented a basic MDL v3000 MOL and RXN file reader
+* Added a basic CIF and mmCIF reader
+* Added benzene ring adding feature to the Controller2D
+* Made aromaticity perception in Renderer2D optional
+* Added rendering of aromatic rings with a circle inside the ring
+  (implements #815261)
+
+Fixes:
+* Removed use of JSX
+* Added missing switch for display of implicit hydrogens in Renderer2D
+* Fixed reading of OpenBabel CML1/2 output
+* Now compiles with GCJ 3.3.1 (closes #807833)
+* Fixed resolving of URI http://www.xml-cml.org/dtd/cml_1_0_1.dtd (closes #809134)
+* Fixed calculation of missing hydrogens for hydrogen itself (closes #813146)
+* Fixed SaturationChecker.saturate() code by taking into account all known atom 
+  types (closes #815810)
+* No longer uses Log4J config by default in library, applications can force 
+  configuration by doing new LoggingTool(classNameString, true) (closes #816643)
+* Fixed serious problem in reading isotope and charge info from atom block in 
+  MDL files
+* Fixed coloring problem of implicit hydrogens and charges in Renderer2D 
+  (closes #815202)
+* Fixed clearing background in Renderer2D (closes #815265)
+* Defaulted XML parser to JAXP that comes with Sun JVM 1.4 (closes #814297)
+
+API changes:
+* Added getIOSettings() to ChemObject[Reader|Writer]
+* Added ChemObjectIO and ChemObjectIOListener interfaces
+  to simplify IO API
+* Renamed [s|g]etAtomicMass to [s|g]etMassNumber (fixes #721117) and moved it
+  from Element into Isotope
+* Removed physical props and remarks from ChemObject (implements RFC #20)
+* Cleaned up API for AtomTypeFactory: getAtomType() can only apply to the current
+  AtomTypeFactory (each atom type list has a different ATF)
+* Removed deprecated methods from SaturationChecker
+* Removed the old io.ChemLoader class (use ReaderFactory instead)
+* Renamed AtomType.get/setMaxBondOrderSum() to .get/setBondOrderSum()
+  (closes #823943)
+
+20030909 Release
+------------------------------------
+New:
+* Coloring of atom symbols in 2D display by atom type.
+* A cdk-validator program
+* More complete validation of chemical semantics in the
+  org.openscience.cdk.validation package.
+* Added Swing implementation of Reader/WriterListener
+* Rewrote Renderer2D.paintAtomSymbol() which will now draw
+  isotope info, e.g. 13C, and properly align implicit
+  hydrogens, e.g. H3C-
+* Stoichiometry and direction concepts added to Reaction
+* Added a reverse() Reaction method to ReactionManipulator
+* A class for generating 2D coordinates for new hydrogen
+  atoms
+* SmilesParser now understands '*' indication unknown elements
+* Debug CDK core classes that can help when developing CDK
+  based applications (dist-core-debug task in build.xml)
+* Added cdk-experimental package with an experimental IUPAC
+  name generator
+* MDL MOL/SDF reader now parses the 'G  ' lines in the property
+  blocks
+* An ChemObject[Reader|Writer].accepts(ChemObject) method
+* A ChemObject removeProperty() method
+* A cdk.validate.ProblemMarker which can 'tag' ChemObject's with
+  problems
+* The Renderer2D will now underline Atom's with validation problems
+  with a red line
+* Added Association class, extended by the new HydrogenBond class
+  (implements RFC #22)
+* Added SetOfMolecules.add(SetOfMolecules) method
+* Added SetOfMolecules getAllMolecules() convenience methods to
+  SetOfReactionsManipulator ReactionManipulator
+* Added 2D rendering of atom-atom mapping in reactions
+* MDL reader now read atom-atom mapping from RXN files
+* Added MFAnalyser.getHTMLMFString() that outputs HTML
+  (thanx to Stephen Tomkinson)
+* Added a Mol2 reader
+* Partly ported the Gaussian03 from Jmol to CDK
+* The structure layout generator can now use templates (fixes #590227)
+
+Fixes:
+* An angle error in the StructureDiagramGenerator has been
+  corrected. This fixes bug #792467 "Rings needlessly overlap"
+* An error in AtomPlacer.getLongestUnplacedChain has been corrected.
+  This fixes Bug #736137 "small problem in layout managers"
+* Added missing LGPL license to distributions.
+* Fixed bugs in ChemSequence.getChemModels() and
+  ChemFile.getChemSequences()
+* JCPControllor nows reconfigures atom after changing symbol
+* 2D coordinate generation for molecules with only
+  one atom (fixed #780545)
+* Added missing PseudoAtom.getLabel() method
+* Renderer2D should display PseudoAtom's label instead of symbol
+* Proper rendering PseudoAtom labels
+* Fixed the 'organic subset' idea, and requirement for []'s
+  (fixed #784433)
+* Fixed reading of dictionaries, and added dictionaries to jar
+* The ReaderFactory can now again return ChemObjectReaders (much
+  thanx to Miguel!)
+* Fixed aromaticity detection
+* Fixes in the SMILES generator (fixes #791091)
+* CMLReader is now much more CML2 compliant
+* Removed use of tokenizers in MDLReader (fixes #719663)
+* Fixed display of atom numbers in Renderer2D (fixes #792466)
+
+API changes:
+* ConnectivityChecker.partitionIntoMolecules() now returns a 
+  SetOfMolecules instead of a Vector.
+* AtomTypeFactory is now a singleton class, see getInstance()
+* Added patch to remove get/setPhysicalProperty and 
+  get/setRemark (implements RFC #20)
+
+20030702 Release
+------------------------------------
+New:
+* Method to determine if two atoms should be bonded (cdk.geometry.BondTools)
+* Added a method debug(Exception) to LoggingTool
+* The SMILES parser now reads formal charges and mass numbers
+* ReaderFactory now recognizes all files that Jmol recognizes
+* Methods for getting subgraph/isomorphism atom mapping
+* Added a getConnectedBondsVector() method to AtomContainer
+* Added guessFileFormat application, using the new ReaderFactory
+* Added hierarchical compare() methods for core classes
+* Added hook for progress reports on, and hooks for user configurability of 
+  file reading
+* More jUnit tests
+* Added MFAnalyser.removeHydrogens()
+
+Changes:
+* Core classes now use super.compare() upto ChemObject
+* CMLReader can now use J2SE 1.4 JAXP XML reader
+* FileConvertor now takes multiple files as input and dynamically
+  recognizes format (implements feature #707425)
+* Added parsing of xy2 and xyz3 CML atom attributes
+* FileConvertor can take a Java property file for IOSetting question
+  answering automization
+* Added HydrogrenAdder class.
+
+Changes:
+* CML output now by defaults uses CML ids for atoms and bonds
+  
+Fixes:
+* Fixed reading/writing of isotopes from/to MDL molfiles
+* Fixed toString() of AtomType.
+* Fixed bug in AtomContainer constructor
+* Some compatibility issues with Java1.1 (for applet usage)
+* Fixed Bond.getAtoms
+* Fixed Bond.toString
+* Fixed (and added) .compare methods for several core classes
+* Fixed bug #746067
+* Fixed aromaticity flagging of bonds in SmilesParser
+* Fixed possible memory overflow in RandomStructureGenerator
+* Fixed bug in Crystal.getP1() method
+* Fixed Bond.toString() and Bond.getAtoms
+* Fixed a number of bugs in SmilesGenerator
+* Fixed CMLResolver to use EntityResolver
+* Fixed reading of atomic coordinate for CML when some coordinate
+  are not given (closes #754811)
+* Fixed detection of MDL molfiles
+* Fixed reading of lists of CML molecules
+* Cleaned up Javadoc
+* Used YYYY-MM-DD standard for class creation date
+
+API changes:
+* ChemObject now has protected flags/pointers (implements RFC #13)
+* FileConvertor command line API changed considerable (see --help)
+* The hydrogen adding methods in SaturationChecker are now deprecated
+  (and replaced by cdk.tools.HydrogrenAdder).
+
+20030412 Release
+------------------------------------
+New:
+* Added move operation to JCPController2D
+* Added ReaderFactory that guesses the file format based
+  on the contents of the file (from the Jmol project)
+* XYZWriter (from the Jmol project)
+* MDLReader now also reads CHG and ISO fields in the
+  property block
+* Basic CMLReaction reading has been added
+* Controller2D now supports context dependent popup menu's
+  for atoms and bonds
+* Added a RFC #8 non-compliant PseudoAtom class 
+* Added editor table for dictionary references in ChemObject's
+* Added ChemObject.getProperties() method
+* CMLReader reads dictRef for the atom and bond elements
+* Core CDK classes are now serializable
+* Added Manipulator classes that relay methods to 'lower' classes
+* Added classes for chemical semantic validation
+* CMLReader/-Writer now does isotopic information
+
+Changes:
+* Added one-click (not-patented ;) deselect of atoms in lasso mode
+* Libio for Jmol and JOELib is now conditionally build
+* Java3D depending classes are now conditionally build
+
+Fixes:
+* Fixed reading of AtomType's with JSX
+* Fixed zooming of atomic charges in Renderer2D
+* Fixed lassoing of atoms in Renderer2D
+* New spiro rings are now using the bond length specified in
+  the renderer model
+* Removed obsolote cdk-cml module and tasks
+* MDLWriter now writes numbers with Locale.ENGLISH
+  (fixes #692410)
+* Fixed bug in Reaction.growProductArray()
+* Better layout of ChemObjectTree
+* Fixed reading of isotope information (closes #714010)
+* Several fixes in MDLReader/-Writer (thanx to Juergen)
+
+API changes:
+* Implemented RFC #11
+* Removed ChemModel.getAtomContainer (see ChemModelManipulator)
+* Returned bond order sum is now double (fixes #686451)
+* Method AtomContainer.getHighestCurrentBondOrder() renamed to
+  getMaximumBondOrder() (fixes #710695)
+
+20030217 Release
+------------------------------------
+New:
+* Added Reaction and SetOfReactions to CDK's core classes
+* Zoom functionality for the Renderer2D (including in editing mode)
+* Added method in GeometryTools to center a molecule around a point
+
+Changes:
+* Renamed io.cml.Convention to io.cml.CMLCoreModule
+
+Fixes:
+* Rendering of Atom Labels in 2D
+* Fixed build process from sourcedist generated with Ant buildfile
+* Removed classes in cdk-extra module that belong elsewhere
+
+API changes:
+none
+
+20030213 Release
+------------------------------------
+New:
+* A Crystal convertor to Jmol v5 is added.
+* StructureDiagramGenerator now uses LoggingTool.
+* It is now possible to say if the double bond
+  configurations should be evaluated for every
+  single double bond in the SmilesGenerator.
+* The Atom class has now a container field for its
+  formal charge. (RFC #6)
+* Added getCentreOfMass methods (2D and 3D)
+* Added geometrical methods for crystals
+* Different build procedure to allow for patches
+* Added a color scheme for atoms based on the partial
+  atomic charge
+* A LonePair class is implemented (RFC #5)
+* More JUnit Tests.
+* Added rendering of wedge bonds (up/down) in Renderer2D
+* Added ChemObjectTree for for showing the content of a
+  ChemObject as a tree, see cdk-view
+* Added 2D rendering and editing of formal charges
+* Added AtomType configuration from Jmol
+* Added a SMILES reader
+* The AtomType class now has fields for Covalent and
+  Vanderwaals radii (RFC #10)
+
+Changes:
+* CMLWriter now outputs CML2 instead of CML1
+
+Fixes:
+* HOSECodeGenerator now generates correctly ranked n-sphere codes.
+* Reading of 3D coordinates from ShelX files
+* Fixed "M  END" line in MDL output (fixes bug #624656)
+* Fixed conversion of coordinates in libio/joelib/Convertor
+  (thanks to Joerg for patch)
+* Fixed reading of multifragment IChI tautomers
+  (fixed bug #642429)
+* Added reading of bond orders S,D,T,A in CML
+  (bug #639455)
+* Added natural occuring isotopes with atomic numbers
+  above 60 (fixes #642426 and #609834)
+* Tar package can now be build on Woody 3.0 (with docbook stylesheets
+  1.40)
+* Fix for SetOfMolecule.getMolecules(). The array length is now
+  equals to the number of molecules in the set.
+* Rewrote AtomTypeFactory to not require JSX in special cases
+
+API changes:
+* Two getBondNumber() methods are added to AtomContainer.
+* The method tools.SaturationChecker.saturateWithHydrogen() got
+  renamed to addHydrogensToSatisfyValency() (thanks to Peter)
+* Major changes in the AtomContainer API (see RFC #5)
+* Added constructor Bond(Atom, Atom)
+* Added method AtomTypeFactory.configure(Atom)
+
+20021012 Release
+------------------------------------
+New:
+* Added the long awaited UniversalIsomophismTester.
+  This class provides methods for Isomophism-, Subgraph-
+  isomorphism- and Maximum Common Subgraph Isomorphism
+  testing.
+* Added MFAnalyser.getElementCount()
+* Added SaturationChecker.saturateWithHydrogen(Molecule)
+* Added cdk.math.MinMax class (methods formerly in
+  cdk.structgen.stoichastic.ConvertTools)
+* Added a IChI reader
+* Added a class for constant physical property values
+* Added a SVG output filter
+* cdk-view now views IChI files
+* cdk-fileconvert can generate SVG
+
+Fixes:
+* IsotopeFactory does now return Isotopes with
+  correctly initialized flags and pointers.
+* flags[] array is now correctly cloned and copied
+  inside the ChemObject.clone() method.
+  (fixes bug #617120)
+* JCPController2D now edits a bond order when in
+  bond mode
+* Removed NoSuchAtomException's from core classes
+  (see RFC #4, fixes bugs #590570 and #590576)
+* Lots of updated JavaDoc's (checked with Sun's DocCheck doclet)
+* Fixed bug in reading SDF files with patch by Chris Pudney
+  (fixes bug #619183).
+* Fixed CMLWriter to not produce invalid CML code, and patched
+  CMLReader to be able to read older CMLReader output
+  (fixes bug #620121).
+* Fixed bond order problem in ChemFileCDO (fixes bug #620229)
+* Fixed reading of aromatic bond from MDL molfiles
+  (fixes bug #620731, thanks to Hans Vanderzijl for patch
+  suggestion)
+
+API changes:
+* Removed obsolete cdk.structgen.stoichastic.ConvertTools
+  (see AtomContainer and MinMax for same functionality)
+* Removed redundant constructor Molecule(Molecule)
+* Removed redundant method Monomer.addAtom(Atom)
+* Moved generateElementFormula(Molecule, String[]) from
+  SwissArmyKnife to MFAnalyser
+* Moved package graphinvariant to package graph.invariant
+* Moved AromaticityCalculator from package smiles to aromaticity
+* Moved CanonicalLabeler from package smiles to graph.invariant
+* Moved PathTools from package tools to graph
+* Removed old hard coded property get and set methods from Molecule.
+* Changed order parameter of two AtomContainer.addBond() methods
+  from int to double signature (fixes bug #620241)
+
+20020920 Release
+------------------------------------
+New:
+* Added a class for representing crystals
+* Added a class for reading PolyMorph Predictor (r)
+  *.pmp files
+* Added a class for reading ShelX files
+* The SMILES generator now also supports chirality
+* cdk-fileconvert supports one-to-many conversion
+  (e.g. PMP contains many crystals, while ShelX
+   can contain only one crystal. Thus, when converting
+   PMP to ShelX more than one file is created.)
+* Added a method MFAnalyser.getElement() which returns
+  a Vector with asorted element names
+* Added a Comparator that can sort element names
+  according to: C,H, then others (alphabetically)
+* More references in documentation.
+* Added more documentation (keywords, examples).
+* Test classes are now in cdk-test.jar
+
+Fixes:
+* Added initialization of atoms Array in Bond.java
+  constructor
+* Fixed parsing of ChemDraw created SMILES (#593648)
+* Removed non-informative template JavaDoc
+
+API changes:
+* cdk.libio.jmol.Convertor now converts
+  AtomContainer from/to ChemFrame, instead of
+  Molecule from/to ChemFrame
+* FortranFormat moved to org.openscience.cdk.math
+* GeomertryTools.hasXDCoordinates() now accepts
+  AtomContainer instead of Molecule
+* ChemObjectWriters must now also implement the
+  method highestSupportedChemObject()
+
+20020902 Release
+------------------------------------
+Fixes:
+* Added missing Log4J jar's to distribution
+
+20020831 Release
+------------------------------------
+New:
+* Added Fragment class (fixes wishlist #591476)
+* Added cdk-download program (fixes wishlist #595031)
+* Added -t option to cdk-test for textual JUnit output
+* Added convertor procedures for CDK from/to jmol.Atom,
+  jmol.ChemFrame
+* Added support for using Jmol as 3D viewer in cdk-view
+
+Fixes:
+* More JavaDoc documentation
+* Fixed bug in cdk-view (#588043)
+* Fixes in MDLReader and FileConvertor (fixes bugs
+  #599536 and #599539)
+
+API changes:
+* Moved more test classes to subpackages of cdk.test
+* Merged IsotopeFactory and ElementFactory
+* Made IsotopeFactory a singleton class
+* Added int[][] AtomContainer.getAdjacencyMatrix() method
+* CDKConstants is now a class and no longer an interface
+
+20020805 Release
+------------------------------------
+* Added --no3D option to cdk.applications.Viewer
+* Do not fail if bond order != integer, assume order=1
+* Classes are now separated into two jar files: cdk-core and cdk-extra.
+* Several yet unnamed bugfixes
+* Added convertor procedures for CDK from/to JOEAtom, JOEBond, JOEMol
+* Fixed output of bond orders in CML (closes bug #582823)
+* Added viewing of SMILES string to cdk-view (closes bug #564839)
+* Removed dependency on non-core classes in ChemModel (closes bug #584905)
+
+20020518 Release
+------------------------------------
+* added reading of partial charges from CML files
+* fixed bug if HOSECodeGenerator
+* added detection of bond order if not given in file
+* added SMILES parser (ported from JChemPaint)
+
+20020419 Release
+------------------------------------
+* uploaded CML 1.0.1 DTD and Schema
+* fixed writing of single molecule to MDL molfile format
+  (closes bug #526612)
+* added fingerprinting class for molecules
+* debugging is set off by default
+* added several JUnit tests for CML reading library
+* added SMILES generator
+
+20020206 Release
+------------------------------------
+* added Viewer application that detects 3D/2D (cdk-view executable)
+* added dumpSystemProperties() to LoggerTool
+  (lists OS version/arch and Java version/vendor)
+* adding Rendered3D which does not use Java3D (not yet operational)
+* fixed Atom.point2D == null problem
+* fixed reading of CML files with DTD for Aelfred2
+  (closes bug #493605)
+
+20020101.1 Release
+------------------------------------
+* fixes non-working cdk-fileconvert
+* added manual pages
+
+20020101 Release
+------------------------------------
+* fixed some javadoc issues
+* added Aelfred2 SAX2 parser
+* added FileConvertor application
+* added constructors that take Writer/Reader for several IO classes
+* added DADML reader, to read structures from internet
+* seperated indices from CML content in database
+* rewrite of database access: split of CML content and indices
+
+Preview 20011201
+------------------------------------
+* splitted libraries from CDK source code
+* fixed reading of CML output of XDrawChem
+
+Preview 20011013
+------------------------------------
+* More classes make use of new LoggingTool
+
+Preview 20011015
+------------------------------------
+* Improvements to SingleRandomStructureGenerator
+* Added Log4J as (optional) logging tool
+* Fixed a problem in PathTools.breadthFirstTargetSearch()
+* Added to convenience methods to XMLTools for serializing and de-serializing
+
+Preview 20010909
+------------------------------------
+* Added TestCases for PDBReader, Monomer, Polymer and ChemObject.
+* Added get/setProperty and get/setRemark to ChemObject.
+* Added classes for rendering graphes
+* Added classes for complex numbers, vectors and matrices
+* Change name from Job to ClosedShellJob
+* Added Factories for AtomType, Element and Isotope as well as their testcases.
+
+Preview 20010807
+------------------------------------
+* Added AtomicTable.java: a list of atomic properties.
+* Added Atom.charge (private)
+* Added XYZReader.java
+* Added has2DCoordinates() and has3DCoordinates() to Geometry.class
+* Added MoleculesTable.java: a list of molecules
+* CDK adopted the Java CML Filter Library
+* Added a PDBReader
+* Added BioPolymer/Polymer and Monomer classes
+* vecmath library updated to 1.14
+
+Preview 20010511
+------------------------------------
+* Added base classes (Atom, Bond, etc)
+* Added file i/o (CML, MDL Molfile)
+* Added JDBC import/export filter (experimental)
+* Added RandomStructure Generator
+* Added Renderer2D

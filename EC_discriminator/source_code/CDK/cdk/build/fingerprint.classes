@@ -1,0 +1,15 @@
+org\openscience\cdk\similarity\Tanimoto*.class
+org\openscience\cdk\similarity\LingoSimilarity*.class
+org\openscience\cdk\similarity\DistanceMoment*.class
+org\openscience\cdk\fingerprint\SubstructureFingerprinter*.class
+org\openscience\cdk\fingerprint\StandardSubstructureSets*.class
+org\openscience\cdk\fingerprint\SimpleAtomComparator*.class
+org\openscience\cdk\fingerprint\SimpleAtomCanonicalizer*.class
+org\openscience\cdk\fingerprint\ShortestPathWalker*.class
+org\openscience\cdk\fingerprint\ShortestPathFingerprinter*.class
+org\openscience\cdk\fingerprint\RandomNumber*.class
+org\openscience\cdk\fingerprint\PubchemFingerprinter*.class
+org\openscience\cdk\fingerprint\MACCSFingerprinter*.class
+org\openscience\cdk\fingerprint\KlekotaRothFingerprinter*.class
+org\openscience\cdk\fingerprint\ExtendedFingerprinter*.class
+org\openscience\cdk\fingerprint\EStateFingerprinter*.class

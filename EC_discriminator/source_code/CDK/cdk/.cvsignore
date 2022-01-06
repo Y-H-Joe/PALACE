@@ -1,0 +1,15 @@
+*.class
+*~
+cdk-*.zip
+cdk-*.tar.gz
+build
+sourcedist
+dist
+reports
+*.dbxml
+*.fo
+*.pdf
+.classpath
+.project
+bin
+.metadata

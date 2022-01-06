@@ -1,0 +1,5 @@
+org\openscience\cdk\modulesuites\MfragmentTests.java
+org\openscience\cdk\fragment\MurckoFragmenterTest.java
+org\openscience\cdk\fragment\FragmentUtilsTest.java
+org\openscience\cdk\fragment\ExhaustiveFragmenterTest.java
+org\openscience\cdk\coverage\FragmentCoverageTest.java

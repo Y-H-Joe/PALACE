@@ -1,0 +1,6 @@
+org\openscience\cdk\signature\SignatureQuotientGraph*.class
+org\openscience\cdk\signature\Orbit*.class
+org\openscience\cdk\signature\MoleculeSignature*.class
+org\openscience\cdk\signature\MoleculeFromSignatureBuilder*.class
+org\openscience\cdk\signature\AtomSignature*.class
+org\openscience\cdk\fingerprint\SignatureFingerprinter*.class

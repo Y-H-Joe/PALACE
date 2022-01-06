@@ -1,0 +1,2 @@
+org\openscience\cdk\qsar\descriptors\protein\TaeAminoAcidDescriptor*.class
+org\openscience\cdk\qsar\descriptors\molecular\AminoAcidCountDescriptor*.class

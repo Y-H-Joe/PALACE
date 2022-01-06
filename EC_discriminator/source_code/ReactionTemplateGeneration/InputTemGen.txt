@@ -1,0 +1,13 @@
+Temperature	1100K
+Name	C-Scission
+Reactants	CCCCC
+Products	C[CH2]	[CH2]CC
+Kinetics	GROUP_ADDITIVITY	USER
+Name	C-Recombination
+Reactants	OC[CH2]	[CH](C)CC
+Products	OCCC(C)CC
+Kinetics	ARRHENIUS	1e10	0	00000.0
+Name	C-Recombination2
+Reactants	C[CH2]	[CH2]CC
+Products	CCCCC
+Kinetics	ARRHENIUS	1e10	0	00000.0

@@ -1,0 +1,8 @@
+org\openscience\cdk\qsar\descriptors\bond\BondSigmaElectronegativityDescriptorTest.java
+org\openscience\cdk\qsar\descriptors\bond\BondPartialTChargeDescriptorTest.java
+org\openscience\cdk\qsar\descriptors\bond\BondPartialSigmaChargeDescriptorTest.java
+org\openscience\cdk\qsar\descriptors\bond\BondPartialPiChargeDescriptorTest.java
+org\openscience\cdk\qsar\descriptors\bond\BondDescriptorTest.java
+org\openscience\cdk\qsar\descriptors\bond\AtomicNumberDifferenceDescriptorTest.java
+org\openscience\cdk\modulesuites\MqsarbondTests.java
+org\openscience\cdk\coverage\QsarbondCoverageTest.java

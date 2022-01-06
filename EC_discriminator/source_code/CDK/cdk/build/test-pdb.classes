@@ -1,0 +1,7 @@
+org\openscience\cdk\tools\ProteinBuilderToolTest*.class
+org\openscience\cdk\templates\AminoAcidsTest*.class
+org\openscience\cdk\modulesuites\MpdbTests*.class
+org\openscience\cdk\io\PDBWriterTest*.class
+org\openscience\cdk\io\PDBReaderTest*.class
+org\openscience\cdk\io\PDBReaderFactoryTest*.class
+org\openscience\cdk\coverage\PdbCoverageTest*.class

@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<bibtex:file xmlns:bibtex="http://bibtexml.sf.net/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+  xsi:schemaLocation="http://bibtexml.sf.net/ bibtexml.xsd">
+
+  <!-- This file is preferably edited in jEdit with the XML plugin installed -->
+  
+  <!-- Copied from CDK News CVS at CUBIC (almost machine) : 1.3 -->
+  
+  <!-- $RCSfile$
+       $Revision$
+       $Date$
+       $Author$
+    -->
+
+  <bibtex:entry id="cdknews.art1">
+    <bibtex:article>
+      <bibtex:author>Willighagen, E.L.</bibtex:author>
+      <bibtex:title>What's 2004 going to bring?</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2004</bibtex:year>
+      <bibtex:volume>1</bibtex:volume>
+      <bibtex:number>1</bibtex:number>
+      <bibtex:pages>3-4</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+
+  <bibtex:entry id="cdknews.art2">
+    <bibtex:article>
+      <bibtex:author>Willighagen, E.L.</bibtex:author>
+      <bibtex:title>Submitting articles to CDK News</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2004</bibtex:year>
+      <bibtex:volume>1</bibtex:volume>
+      <bibtex:number>1</bibtex:number>
+      <bibtex:pages>6-7</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+
+  <bibtex:entry id="cdknews.art3">
+    <bibtex:article>
+      <bibtex:author>Willighagen, E.L.</bibtex:author>
+      <bibtex:title>Customizing file IO</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2004</bibtex:year>
+      <bibtex:volume>1</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>2-4</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+
+  <bibtex:entry id="cdknews.art4">
+    <bibtex:article>
+      <bibtex:author>Steinbeck, C.</bibtex:author>
+      <bibtex:title>NMRShiftDB</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2004</bibtex:year>
+      <bibtex:volume>1</bibtex:volume>
+      <bibtex:number>1</bibtex:number>
+      <bibtex:pages>2-3</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+
+  <bibtex:entry id="cdknews.art5">
+    <bibtex:article>
+      <bibtex:author>Kunh, S.</bibtex:author>
+      <bibtex:title>Predictor</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2004</bibtex:year>
+      <bibtex:volume>1</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>7-8</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+
+  <bibtex:entry id="cdknews.art6">
+    <bibtex:article>
+      <bibtex:author>Hoppe, C.</bibtex:author>
+      <bibtex:title>First steps in the implementation of a force field for the CDK package</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2004</bibtex:year>
+      <bibtex:volume>1</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>4-5</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+
+  <bibtex:entry id="cdknews.art8">
+    <bibtex:article>
+      <bibtex:author>Helmus, T.</bibtex:author>
+      <bibtex:title>Spok - The Spectrum Organisation Kit</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2004</bibtex:year>
+      <bibtex:volume>1</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>5-6</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+
+  <bibtex:entry id="cdknews.art9">
+    <bibtex:article>
+      <bibtex:author>Willighagen, E.L.</bibtex:author>
+      <bibtex:title>Konqueror web shortcuts to the CDK API</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2004</bibtex:year>
+      <bibtex:volume>1</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>8-9</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art10">
+    <bibtex:article>
+      <bibtex:author>Willighagen, E.L.</bibtex:author>
+      <bibtex:title>Communication: ChemNomParse</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>1</bibtex:number>
+      <bibtex:pages>24</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art11">
+    <bibtex:article>
+      <bibtex:author>Guha, R.</bibtex:author>
+      <bibtex:title>Using the CDK as a backend to R</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>1</bibtex:number>
+      <bibtex:pages>2-6</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art12">
+    <bibtex:article>
+      <bibtex:author>Guha, R.</bibtex:author>
+      <bibtex:title>Using R to provide statistical functionality for QSAR modeling in CDK</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>1</bibtex:number>
+      <bibtex:pages>7-13</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art13">
+    <bibtex:article>
+      <bibtex:author>Willighagen, E.L. and Howard, M.</bibtex:author>
+      <bibtex:title>Jmol as 3D viewer for CDK</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>1</bibtex:number>
+      <bibtex:pages>17-20</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art14">
+    <bibtex:article>
+      <bibtex:author>Willighagen, E.L.</bibtex:author>
+      <bibtex:title>The Algorithm and the Implementation</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>46-48</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art15">
+    <bibtex:article>
+      <bibtex:author>Kuhn, S.</bibtex:author>
+      <bibtex:title>Extending www.chemistry-development-kit.org</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>1</bibtex:number>
+      <bibtex:pages>14-16</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art16">
+    <bibtex:article>
+      <bibtex:author>Bender, A.</bibtex:author>
+      <bibtex:title>Representation and use of chemistry in the global eletronic age</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>1</bibtex:number>
+      <bibtex:pages>16-17</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art17">
+    <bibtex:article>
+      <bibtex:author>O'Boyle, N.M.</bibtex:author>
+      <bibtex:title>Accessing the CDK using Python</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>40-42</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art18">
+    <bibtex:article>
+      <bibtex:author>Apodaca, R.</bibtex:author>
+      <bibtex:title>CDKTools: The CDK-Octet Bridge</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>27-34</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art19">
+    <bibtex:article>
+      <bibtex:author>Murray-Rust, P.</bibtex:author>
+      <bibtex:title>The Blue Obelisk</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>43-46</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art20">
+    <bibtex:article>
+      <bibtex:author>Spjuth, O. and Eklund, M. and Wikberg, E.S.</bibtex:author>
+      <bibtex:title>Communication: An Information System for Proteochemometrics</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>54-56</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art21">
+    <bibtex:article>
+      <bibtex:author>Willighagen, E.L.</bibtex:author>
+      <bibtex:title>Development Tools. 1. Unit testing</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>48-51</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art22">
+    <bibtex:article>
+      <bibtex:author>Nikolova-Jeliazkova, N.</bibtex:author>
+      <bibtex:title>Slow fingerprints?</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>34-40</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+  <bibtex:entry id="cdknews.art23">
+    <bibtex:article>
+      <bibtex:author>Steinbeck, S.</bibtex:author>
+      <bibtex:title>Call for Registration: The CDK 5th Anniversary Workshop</bibtex:title>
+      <bibtex:journal>CDK News</bibtex:journal>
+      <bibtex:year>2005</bibtex:year>
+      <bibtex:volume>2</bibtex:volume>
+      <bibtex:number>2</bibtex:number>
+      <bibtex:pages>54</bibtex:pages>
+    </bibtex:article>
+  </bibtex:entry>
+  
+</bibtex:file>

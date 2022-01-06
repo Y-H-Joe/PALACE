@@ -1,0 +1,4 @@
+org\openscience\cdk\qsar\descriptors\protein\TaeAminoAcidDescriptorTest*.class
+org\openscience\cdk\qsar\descriptors\molecular\AminoAcidCountDescriptorTest*.class
+org\openscience\cdk\modulesuites\MqsarproteinTests*.class
+org\openscience\cdk\coverage\QsarproteinCoverageTest*.class

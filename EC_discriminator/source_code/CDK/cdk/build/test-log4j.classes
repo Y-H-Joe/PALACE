@@ -1,0 +1,4 @@
+org\openscience\cdk\tools\LoggingToolTestDebugTrue*.class
+org\openscience\cdk\tools\LoggingToolTest*.class
+org\openscience\cdk\modulesuites\Mlog4jTests*.class
+org\openscience\cdk\coverage\Log4jCoverageTest*.class

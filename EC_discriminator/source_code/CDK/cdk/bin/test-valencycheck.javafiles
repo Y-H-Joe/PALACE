@@ -1,0 +1,7 @@
+org\openscience\cdk\tools\SaturationCheckerTest.java
+org\openscience\cdk\tools\DeduceBondOrderTestFromExplicitHydrogens.java
+org\openscience\cdk\tools\CDKValencyCheckerTest.java
+org\openscience\cdk\tools\CDKHydrogenAdderTest.java
+org\openscience\cdk\tools\ATASaturationCheckerTest.java
+org\openscience\cdk\modulesuites\MvalencycheckTests.java
+org\openscience\cdk\coverage\ValencycheckCoverageTest.java
