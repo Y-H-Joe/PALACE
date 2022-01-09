@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['link_CHEBI2compound_name_20211122.py', 'annotate_compound_with_Rhea_20211125.py', '2nd_filter_of_Compound_CHEBI_20211217.py', 'use_CHEBI2annotate_reformat_reaction_20211123.py']
+recent_files = ['2nd_filter_of_Compound_CHEBI_20211217.py', 'filter_train_given_uniprotID_20210103.py']
 
 [main]
 version = 0.2.0

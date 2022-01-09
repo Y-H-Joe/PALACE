@@ -37,8 +37,8 @@ for i in retro_df.index:
     ec=eval(tmp[-1])[0]
     
     ## not considering super enzyme, such as 1, or 1.1 for now
-    #ec_bin=str("uniprot_EC_bins/auniprot_trembl_bacteria.enzyme.UniProtID_EC_protein.tsv_"+ec)
-    ec_bin=str("aa_"+ec)
+    ec_bin=str("uniprot_EC_bins/uniprot_sprot_bacteria.dat.enzyme.train_v3.UniProtID_EC_protein.tsv_"+ec)
+    #ec_bin=str("aa_"+ec)
     try:
         ec_bin_df=pd.read_csv(ec_bin,sep='\t')
         for i in ec_bin_df.index:
@@ -49,6 +49,7 @@ for i in retro_df.index:
         #tmppp=tmp[:-1]+['-','-','-']
         #retro_tmp.append(tmppp)
         pass
+
     
 output_df=pd.DataFrame(retro_tmp,columns=['reaction_id','substrate_smiles','products_smiles','UnitProtID','EC','protein'])
 output_df.to_csv(output,index=None)

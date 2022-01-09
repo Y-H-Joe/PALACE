@@ -24,7 +24,7 @@ uniprot_trembl_bacteria.enzyme.UniProtID_EC_protein.tsv
 """
 import pandas as pd
 import sys
-dp="aa"
+dp=sys.argv[1]
 
 df=pd.read_csv(dp,sep='\t')
 
