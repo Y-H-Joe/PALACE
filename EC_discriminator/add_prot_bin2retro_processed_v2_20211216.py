@@ -52,7 +52,7 @@ for i in retro_df.index:
 
     
 output_df=pd.DataFrame(retro_tmp,columns=['reaction_id','substrate_smiles','products_smiles','UnitProtID','EC','protein'])
-output_df.to_csv(output,index=None)
+output_df.to_csv(output,index=None,sep='\t')
     
     
     

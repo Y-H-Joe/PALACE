@@ -28,7 +28,7 @@ dp=sys.argv[1]
 
 df=pd.read_csv(dp,sep='\t')
 
-EC_bin=set(df['EC'])
+EC_bin=set([x.split(';')[0] for x in df['EC']])
 
 for EC in EC_bin:
     df_bin=df[df['EC']==EC]
