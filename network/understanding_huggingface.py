@@ -39,7 +39,8 @@ input_ids = torch.tensor([input_ids])
 # 获得BERT模型最后一个隐层结果
 with torch.no_grad():
     last_hidden_states = model(input_ids)[0]  # Models outputs are now tuples
-    
+
+
 
 
 
