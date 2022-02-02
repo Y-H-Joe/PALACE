@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['EC_discriminator\\retroDB2train_20211216.py', 'data_prepare\\check_number_of_compound_20220128.py', 'data_prepare\\data_aug\\process_reac_prop_20221028.py', 'data_prepare\\data_aug\\annotate_reac_with_SMILES_20220128.py']
+recent_files = ['data_prepare\\data_aug\\canonicalize_and_tokenize_rxn_20220130.py', 'network\\pure_reads2fasta_format_20211217.py', 'network\\transfer_learning_202210109.py']
 
 [main]
 version = 0.2.0

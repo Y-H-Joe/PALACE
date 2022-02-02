@@ -13,13 +13,29 @@ Contact: yihangjoe@foxmail.com
 =================================== input =====================================
 
 =================================== output ====================================
+uniprot_MetaNetX_EC_SMILES.v2.aug_tok.tsv:
+    'EC','rxn','rxn_can','rxn_aug','rxn_aug_shu','rxn_tok','rxn_aug_tok','rxn_tok_shu','rxn_aug_tok_shu'
+
+EC_tok.tsv: the tokenized and augmented rxn SMILES pair with EC
+    EC, rxn
+## split test and train of SMILES, so the network never see test SMILES during training
+## the protein sequence will also be split to train and test
+EC_tok.train.tsv
+EC_tok.test.tsv
+
+#deprecated:only 6300 (1575*4) rxn has one-product, other 60000+ rxn are 
+#multiproduct rxn, so let's predict multi-product
+EC_tok.one_product.tsv: in this study, we mainly focused on one-product rxn:
+    EC, rxn
+EC_tok.one_product.train.tsv
+EC_tok.one_product.test.tsv
+
 
 ================================= parameters ==================================
 
 =================================== example ===================================
 
 =================================== warning ===================================
-
 ####=======================================================================####
 """
 import pandas as pd
@@ -30,6 +46,14 @@ import random
 
 dp = 'uniprot_MetaNetX_EC_SMILES.v2.tsv'
 df = pd.read_csv(dp,sep='\t',header=None)
+output1 = 'uniprot_MetaNetX_EC_SMILES.v2.aug_tok.tsv'
+output2 = 'EC_tok.tsv'
+output3 = 'EC_tok.train.tsv' # 90%
+output4 = 'EC_tok.test.tsv' # 10%
+
+#output3 = 'EC_tok.one_product.tsv'
+#output4 = 'EC_tok.one_product.train.tsv' # 90%
+#output5 = 'EC_tok.one_product.split.tsv' # 10%
 
 
 def tokenize_smiles(smi):
@@ -68,7 +92,9 @@ def generate_equivalent_smiles(smi):
         if len(smi) > 20:
             random_smi = smi_with_dot(smi) ## second chance
             if smi == random_smi:
-                print("{} failed randome augmentaion.".format(smi))
+                random_smi = smi_with_dot(smi) ## thrid chance
+                if smi == random_smi:
+                    print("{} failed randome augmentaion. skip.".format(smi))
     return random_smi
 
 def canonicalize_smiles(smi):
@@ -132,19 +158,20 @@ for rxn in rxn_lst:
     pro_lst_aug_tok = [tokenize_smiles(smi) for smi in pro_lst_aug]
     sub_lst_aug_shu_tok = [tokenize_smiles(smi) for smi in sub_lst_aug_shu]
     
-    rxn_sub_can = ' + '.join(sub_can_lst)
-    rxn_pro_can = ' + '.join(pro_can_lst)
-    rxn_sub_tok = ' + '.join(sub_lst_tok)
-    rxn_pro_tok = ' + '.join(pro_lst_tok)
-    rxn_sub_tok_shu = ' + '.join(sub_lst_tok_shu)
+    ## using '>' rather than '+' to fit with pretrained MolecularTransformer network
+    rxn_sub_can = ' > '.join(sub_can_lst)
+    rxn_pro_can = ' > '.join(pro_can_lst)
+    rxn_sub_tok = ' > '.join(sub_lst_tok)
+    rxn_pro_tok = ' > '.join(pro_lst_tok)
+    rxn_sub_tok_shu = ' > '.join(sub_lst_tok_shu)
     
-    rxn_sub_aug = ' + '.join(sub_lst_aug)
-    rxn_pro_aug = ' + '.join(pro_lst_aug)
-    rxn_sub_aug_shu = ' + '.join(sub_lst_aug_shu)
+    rxn_sub_aug = ' > '.join(sub_lst_aug)
+    rxn_pro_aug = ' > '.join(pro_lst_aug)
+    rxn_sub_aug_shu = ' > '.join(sub_lst_aug_shu)
     
-    rxn_sub_aug_tok = ' + '.join(sub_lst_aug_tok)
-    rxn_pro_aug_tok = ' + '.join(pro_lst_aug_tok)
-    rxn_sub_aug_shu_tok = ' + '.join(sub_lst_aug_shu_tok)
+    rxn_sub_aug_tok = ' > '.join(sub_lst_aug_tok)
+    rxn_pro_aug_tok = ' > '.join(pro_lst_aug_tok)
+    rxn_sub_aug_shu_tok = ' > '.join(sub_lst_aug_shu_tok)
     
     ## not using ' = ' as the separator, because it's same as tokenzied double bond
     rxn_can = ' >> '.join([rxn_sub_can,rxn_pro_can])
@@ -164,11 +191,38 @@ for rxn in rxn_lst:
     rxn_tok_shu_lst.append(rxn_tok_shu)
     rxn_aug_tok_shu_lst.append(rxn_aug_tok_shu)
 
-df[2] = rxn_aug_lst
-df[3] = rxn_aug_shu_lst
-df[4] = rxn_tok_lst
-df[5] = rxn_aug_tok_lst
-df[6] = rxn_tok_shu_lst
-df[7] = rxn_aug_tok_shu_lst
-df.columns = ['EC','rxn','rxn_aug','rxn_aug_shu','rxn_tok','rxn_aug_tok','rxn_tok_shu','rxn_aug_tok_shu']
+df[2] = rxn_can_lst
+df[3] = rxn_aug_lst
+df[4] = rxn_aug_shu_lst
+df[5] = rxn_tok_lst
+df[6] = rxn_aug_tok_lst
+df[7] = rxn_tok_shu_lst
+df[8] = rxn_aug_tok_shu_lst
+df.columns = ['EC','rxn','rxn_can','rxn_aug','rxn_aug_shu','rxn_tok','rxn_aug_tok','rxn_tok_shu','rxn_aug_tok_shu']
+
+
+df_EC_tok = pd.concat([df[['EC','rxn_tok']].rename(columns = {'rxn_tok':'rxn'}),
+                       df[['EC','rxn_aug_tok']].rename(columns = {'rxn_aug_tok':'rxn'}),
+                       df[['EC','rxn_tok_shu']].rename(columns = {'rxn_tok_shu':'rxn'}),
+                       df[['EC','rxn_aug_tok_shu']].rename(columns = {'rxn_aug_tok_shu':'rxn'})],
+                      axis = 0, ignore_index=True)
+
+## one product
+"""
+df_EC_tok_1p = []
+for row in df_EC_tok.itertuples():
+    if len(row.rxn.split(' >> ')[1].split(' + ')) == 1:
+        df_EC_tok_1p.append(row)
+df_EC_tok_1p = pd.DataFrame(df_EC_tok_1p)
+"""
+test_num = int(.1 * df_EC_tok.shape[0])
+df_EC_tok_test = df_EC_tok.sample(n=test_num, axis = 0)
+df_EC_tok_train_idx = [x for x in df_EC_tok.index if x not in df_EC_tok_test.index]
+df_EC_tok_train = df_EC_tok.loc[df_EC_tok_train_idx]
+
+
+df.to_csv(output1, sep = '\t',index=None)
+df_EC_tok.to_csv(output2,sep='\t',index=None)
+df_EC_tok_train.to_csv(output3,sep='\t',index=None)
+df_EC_tok_test.to_csv(output4,sep='\t',index=None)
 
