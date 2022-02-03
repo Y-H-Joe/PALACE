@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['data_prepare\\data_aug\\canonicalize_and_tokenize_rxn_20220130.py', 'network\\pure_reads2fasta_format_20211217.py', 'network\\transfer_learning_202210109.py']
+recent_files = ['data_prepare\\data_aug\\canonicalize_and_tokenize_rxn_20220130.py']
 
 [main]
 version = 0.2.0

@@ -34,3 +34,6 @@ SMILES_preprocess/molecule_structure_generation-master/scripts/validation/plots_
 SMILES_preprocess/molecule_structure_generation-master/scripts/validation/proteins_for_smina.ipynb
 SMILES_preprocess/molecule_structure_generation-master/scripts/validation/validation.ipynb
 SMILES_preprocess/molecule_structure_generation-master/scripts/validation/zinc_db_analyze.ipynb
+data_prepare/data_aug/chem_SMILES.tsv
+network/trained_models/STEREO_separated_augm_model_average_20.pt
+network/trained_models/STEREO_separated_augm_model_average_20.pt
