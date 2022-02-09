@@ -1,7 +1,0 @@
-org\openscience\cdk\tools\SaturationCheckerTest*.class
-org\openscience\cdk\tools\DeduceBondOrderTestFromExplicitHydrogens*.class
-org\openscience\cdk\tools\CDKValencyCheckerTest*.class
-org\openscience\cdk\tools\CDKHydrogenAdderTest*.class
-org\openscience\cdk\tools\ATASaturationCheckerTest*.class
-org\openscience\cdk\modulesuites\MvalencycheckTests*.class
-org\openscience\cdk\coverage\ValencycheckCoverageTest*.class

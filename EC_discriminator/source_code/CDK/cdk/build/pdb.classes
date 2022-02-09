@@ -1,6 +1,0 @@
-org\openscience\cdk\tools\ProteinBuilderTool*.class
-org\openscience\cdk\templates\AminoAcids*.class
-org\openscience\cdk\protein\data\PDBStrand*.class
-org\openscience\cdk\io\PDBWriter*.class
-org\openscience\cdk\io\PDBReader*.class
-org\openscience\cdk\EnzymeResidueLocator*.class

@@ -1,4 +1,0 @@
-org\openscience\cdk\fragment\MurckoFragmenter*.class
-org\openscience\cdk\fragment\IFragmenter*.class
-org\openscience\cdk\fragment\FragmentUtils*.class
-org\openscience\cdk\fragment\ExhaustiveFragmenter*.class

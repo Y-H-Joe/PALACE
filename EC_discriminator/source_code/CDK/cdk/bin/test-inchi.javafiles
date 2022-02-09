@@ -1,8 +1,0 @@
-org\openscience\cdk\smiles\AbsoluteSMILESTest.java
-org\openscience\cdk\modulesuites\MinchiTests.java
-org\openscience\cdk\inchi\RadicalParserTest.java
-org\openscience\cdk\inchi\InChIToStructureTest.java
-org\openscience\cdk\inchi\InChIGeneratorTest.java
-org\openscience\cdk\inchi\InChIGeneratorFactoryTest.java
-org\openscience\cdk\graph\invariant\InChINumbersToolsTest.java
-org\openscience\cdk\coverage\InchiCoverageTest.java

@@ -1,4 +1,0 @@
-org\openscience\cdk\renderer\visitor\AWTDrawVisitorTest*.class
-org\openscience\cdk\renderer\visitor\AbstractAWTDrawVisitorTest*.class
-org\openscience\cdk\modulesuites\MrenderawtTests*.class
-org\openscience\cdk\coverage\RenderawtCoverageTest*.class

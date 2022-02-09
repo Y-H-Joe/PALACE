@@ -1,5 +1,0 @@
-org\openscience\cdk\qsar\descriptors\bond\BondSigmaElectronegativityDescriptor*.class
-org\openscience\cdk\qsar\descriptors\bond\BondPartialTChargeDescriptor*.class
-org\openscience\cdk\qsar\descriptors\bond\BondPartialSigmaChargeDescriptor*.class
-org\openscience\cdk\qsar\descriptors\bond\BondPartialPiChargeDescriptor*.class
-org\openscience\cdk\qsar\descriptors\bond\AtomicNumberDifferenceDescriptor*.class

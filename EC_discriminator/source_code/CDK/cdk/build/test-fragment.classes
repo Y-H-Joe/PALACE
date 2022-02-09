@@ -1,5 +1,0 @@
-org\openscience\cdk\modulesuites\MfragmentTests*.class
-org\openscience\cdk\fragment\MurckoFragmenterTest*.class
-org\openscience\cdk\fragment\FragmentUtilsTest*.class
-org\openscience\cdk\fragment\ExhaustiveFragmenterTest*.class
-org\openscience\cdk\coverage\FragmentCoverageTest*.class

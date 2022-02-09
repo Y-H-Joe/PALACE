@@ -1,9 +1,0 @@
-org\openscience\cdk\modulesuites\MsdgTests*.class
-org\openscience\cdk\layout\TemplateHandlerTest*.class
-org\openscience\cdk\layout\StructureDiagramGeneratorTest*.class
-org\openscience\cdk\layout\OverlapResolverTest*.class
-org\openscience\cdk\layout\NonPlanarBondsTest*.class
-org\openscience\cdk\layout\HydrogenPlacerTest*.class
-org\openscience\cdk\layout\CorrectGeometricConfigurationTest*.class
-org\openscience\cdk\layout\AtomPlacerTest*.class
-org\openscience\cdk\coverage\SdgCoverageTest*.class

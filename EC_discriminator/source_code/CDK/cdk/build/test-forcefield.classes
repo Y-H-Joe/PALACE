@@ -1,5 +1,0 @@
-org\openscience\cdk\modulesuites\MforcefieldTests*.class
-org\openscience\cdk\modeling\builder3d\MMFF94BasedParameterSetReaderTest*.class
-org\openscience\cdk\modeling\builder3d\ForceFieldConfiguratorTest*.class
-org\openscience\cdk\coverage\ForcefieldCoverageTest*.class
-org\openscience\cdk\charges\MMFF94PartialChargesTest*.class

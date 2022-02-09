@@ -1,8 +1,0 @@
-org\openscience\cdk\qsar\descriptors\bond\BondSigmaElectronegativityDescriptorTest*.class
-org\openscience\cdk\qsar\descriptors\bond\BondPartialTChargeDescriptorTest*.class
-org\openscience\cdk\qsar\descriptors\bond\BondPartialSigmaChargeDescriptorTest*.class
-org\openscience\cdk\qsar\descriptors\bond\BondPartialPiChargeDescriptorTest*.class
-org\openscience\cdk\qsar\descriptors\bond\BondDescriptorTest*.class
-org\openscience\cdk\qsar\descriptors\bond\AtomicNumberDifferenceDescriptorTest*.class
-org\openscience\cdk\modulesuites\MqsarbondTests*.class
-org\openscience\cdk\coverage\QsarbondCoverageTest*.class

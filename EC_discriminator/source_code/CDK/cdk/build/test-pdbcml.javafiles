@@ -1,4 +1,0 @@
-org\openscience\cdk\modulesuites\MpdbcmlTests.java
-org\openscience\cdk\libio\cml\PDBAtomCustomizerTest.java
-org\openscience\cdk\io\cml\PDBAtomCustomizerTest.java
-org\openscience\cdk\coverage\PdbcmlCoverageTest.java

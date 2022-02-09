@@ -1,8 +1,0 @@
-org\openscience\cdk\dict\OWLReact*.class
-org\openscience\cdk\dict\OWLFile*.class
-org\openscience\cdk\dict\EntryReact*.class
-org\openscience\cdk\dict\Entry*.class
-org\openscience\cdk\dict\DictionaryHandler*.class
-org\openscience\cdk\dict\DictionaryDatabase*.class
-org\openscience\cdk\dict\Dictionary*.class
-org\openscience\cdk\dict\CDKDictionaryReferences*.class

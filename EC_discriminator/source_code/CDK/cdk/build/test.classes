@@ -1,5 +1,0 @@
-org\openscience\cdk\tools\AbstractLoggingToolTest*.class
-org\openscience\cdk\fingerprint\AbstractFingerprinterTest*.class
-org\openscience\cdk\coverage\CoverageTest*.class
-org\openscience\cdk\coverage\CoverageAnnotationTest*.class
-org\openscience\cdk\CDKTestCase*.class

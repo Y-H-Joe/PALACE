@@ -1,8 +1,0 @@
-org\openscience\cdk\modulesuites\Mbuilder3dTests.java
-org\openscience\cdk\modeling\builder3d\TemplateHandler3DTest.java
-org\openscience\cdk\modeling\builder3d\ModelBuilder3DTest.java
-org\openscience\cdk\modeling\builder3d\FurtherTemplateHandler3DTest.java
-org\openscience\cdk\modeling\builder3d\FurtherAtomPlacer3DTest.java
-org\openscience\cdk\modeling\builder3d\AtomTetrahedralLigandPlacer3DTest.java
-org\openscience\cdk\modeling\builder3d\AtomPlacer3DTest.java
-org\openscience\cdk\coverage\Builder3dCoverageTest.java

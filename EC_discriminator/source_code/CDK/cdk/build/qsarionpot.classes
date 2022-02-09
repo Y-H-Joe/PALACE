@@ -1,3 +1,0 @@
-org\openscience\cdk\qsar\descriptors\molecular\IPMolecularLearningDescriptor*.class
-org\openscience\cdk\qsar\descriptors\bond\IPBondLearningDescriptor*.class
-org\openscience\cdk\qsar\descriptors\atomic\IPAtomicLearningDescriptor*.class

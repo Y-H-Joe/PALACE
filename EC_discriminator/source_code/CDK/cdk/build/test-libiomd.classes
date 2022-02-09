@@ -1,3 +1,0 @@
-org\openscience\cdk\modulesuites\MlibiomdTests*.class
-org\openscience\cdk\libio\md\MDMoleculeTest*.class
-org\openscience\cdk\coverage\LibiomdCoverageTest*.class
