@@ -33,7 +33,7 @@ pretrained_smi = pretrained_smi_state_dict['model']
 
 import onmt
 import math
-exp_nn = torch.load('checkpoints_model_step_50.pt')
+exp_nn = torch.load('trained_models/checkpoints_model_step_50.pt')
 exp_nn_dict = exp_nn['model']
 #%%
 
@@ -680,3 +680,29 @@ class Embeddings(nn.Module):
         return source
 
 
+
+
+
+## construct MolecularTransformer
+
+class Net(NMTModel):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(3, 6, 5)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = x.view(-1, 16 * 5 * 5)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+net = Net()
+print(net)
