@@ -26,14 +26,45 @@ Contact: yihangjoe@foxmail.com
 ## prepare args
 from argparse import Namespace
 
-opt = Namespace(accum_count=4, adagrad_accumulator_init=0, adam_beta1=0.9, adam_beta2=0.998, audio_enc_pooling='1', batch_size=4096, batch_type='tokens', bridge=False, brnn=None, cnn_kernel_width=3, context_gate=None, copy_attn=False, copy_attn_force=False, copy_loss_by_seqlength=False, coverage_attn=False, data='data/', dec_layers=2, dec_rnn_size=500, decay_method='noam', decay_steps=10000, decoder_type='transformer', dropout=0.1, enc_layers=2, enc_rnn_size=500, encoder_type='transformer', epochs=0, exp='', exp_host='', feat_merge='concat', feat_vec_exponent=0.7, feat_vec_size=-1, fix_word_vecs_dec=False, fix_word_vecs_enc=False, generator_function='log_softmax', global_attention='general', global_attention_function='softmax', gpu_backend='nccl', gpu_ranks=[], gpu_verbose_level=0, gpuid=[], heads=8, image_channel_size=3, input_feed=1, keep_checkpoint=20, label_smoothing=0.0, lambda_coverage=1, layers=4, learning_rate=2.0, learning_rate_decay=0.5, log_file='', master_ip='localhost', master_port=10000, max_generator_batches=32, max_grad_norm=0.0, model_type='text', normalization='tokens', optim='adam', param_init=0.0, param_init_glorot=True, position_encoding=True, pre_word_vecs_dec=None, pre_word_vecs_enc=None, report_every=1000, reuse_copy_attn=False, rnn_size=256, rnn_type='LSTM', sample_rate=16000, save_checkpoint_steps=10, save_model='experiments/checkpoints_model', seed=42, self_attn_type='scaled-dot', share_decoder_embeddings=False, share_embeddings=True, src_word_vec_size=500, start_decay_steps=50000, tensorboard=False, tensorboard_log_dir='runs/onmt', tgt_word_vec_size=500, train_from='', train_steps=5, transformer_ff=2048, truncated_decoder=0, valid_batch_size=32, valid_steps=10000, warmup_steps=8000, window_size=0.02, word_vec_size=256, world_size=1)
+opt = Namespace(accum_count=4, adagrad_accumulator_init=0, adam_beta1=0.9, 
+                adam_beta2=0.998, audio_enc_pooling='1', batch_size=4096,
+                batch_type='tokens', bridge=False, brnn=None, cnn_kernel_width=3, 
+                context_gate=None, copy_attn=False, copy_attn_force=False, 
+                copy_loss_by_seqlength=False, coverage_attn=False, data='data/', 
+                dec_layers=2, dec_rnn_size=500, decay_method='noam', 
+                decay_steps=10000, decoder_type='transformer', dropout=0.1, 
+                enc_layers=2, enc_rnn_size=500, encoder_type='transformer', 
+                epochs=0, exp='', exp_host='', feat_merge='concat', 
+                feat_vec_exponent=0.7, feat_vec_size=-1, fix_word_vecs_dec=False, 
+                fix_word_vecs_enc=False, generator_function='log_softmax', 
+                global_attention='general', global_attention_function='softmax', 
+                gpu_backend='nccl', gpu_ranks=[], gpu_verbose_level=0, gpuid=[], 
+                heads=8, image_channel_size=3, input_feed=1, keep_checkpoint=20, 
+                label_smoothing=0.0, lambda_coverage=1, layers=4, learning_rate=2.0,
+                learning_rate_decay=0.5, log_file='', master_ip='localhost', 
+                master_port=10000, max_generator_batches=32, max_grad_norm=0.0, 
+                model_type='text', normalization='tokens', optim='adam', 
+                param_init=0.0, param_init_glorot=True, position_encoding=True,
+                pre_word_vecs_dec=None, pre_word_vecs_enc=None, report_every=1000, 
+                reuse_copy_attn=False, rnn_size=256, rnn_type='LSTM',
+                sample_rate=16000, save_checkpoint_steps=10,
+                save_model='experiments/checkpoints_model', 
+                seed=42, self_attn_type='scaled-dot', 
+                share_decoder_embeddings=False, share_embeddings=True, 
+                src_word_vec_size=500, start_decay_steps=50000, tensorboard=False, 
+                tensorboard_log_dir='runs/onmt', tgt_word_vec_size=500, 
+                train_from='', train_steps=5, transformer_ff=2048, 
+                truncated_decoder=0, valid_batch_size=32, valid_steps=10000,
+                warmup_steps=8000, window_size=0.02, word_vec_size=256, world_size=1)
 
 ## multi-GPU
 import onmt
 import torch
 import random
 from onmt.utils.logging import init_logger, logger
-
+from onmt.inputters.inputter import build_dataset_iter, lazily_load_dataset, \
+    _load_fields, _collect_report_features
+    
 def run(opt, device_id, error_queue):
     """ run process """
     try:
@@ -76,6 +107,11 @@ def training_opt_postprocessing(opt, device_id):
                     should run with -gpu_ranks")
 
     if opt.seed > 0:
+        """
+        为什么使用相同的网络结构，跑出来的效果完全不同，用的学习率，迭代次数，batch size 都是一样？
+        固定随机数种子是非常重要的。但是如果你使用的是PyTorch等框架，还要看一下框架的种子是否固定了。
+        还有，如果用了cuda，别忘了cuda的随机数种子。这里还需要用到torch.backends.cudnn.deterministic.
+        """
         torch.manual_seed(opt.seed)
         # this one is needed for torchtext random call (shuffled iterator)
         # in multi gpu it ensures datasets are read in the same order
@@ -108,6 +144,9 @@ def single_main(opt, device_id):
 
     # Peek the first dataset to determine the data_type.
     # (All datasets have the same data_type).
+    """
+    data_type: type of the source input. Options are [text|img|audio]
+    """
     first_dataset = next(lazily_load_dataset("train", opt))
     data_type = first_dataset.data_type
 
