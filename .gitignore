@@ -37,3 +37,4 @@ SMILES_preprocess/molecule_structure_generation-master/scripts/validation/zinc_d
 data_prepare/data_aug/chem_SMILES.tsv
 network/trained_models/STEREO_separated_augm_model_average_20.pt
 network/trained_models/STEREO_separated_augm_model_average_20.pt
+network/trained_models/checkpoints_model_step_50.pt
