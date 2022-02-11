@@ -211,19 +211,26 @@ class TextDataset(DatasetBase):
             are the corresponding Field objects.
         """
         fields = {}
-
-        fields["src"] = torchtext.data.Field(
-            pad_token=PAD_WORD,
-            include_lengths=True)
+        try:
+            fields["src"] = torchtext.data.Field(
+                pad_token=PAD_WORD,
+                include_lengths=True)
+        except:
+            fields["src"] = torchtext.legacy.data.Field(
+                pad_token=PAD_WORD,
+                include_lengths=True)
 
         for j in range(n_src_features):
             fields["src_feat_" + str(j)] = \
                 torchtext.data.Field(pad_token=PAD_WORD)
-
-        fields["tgt"] = torchtext.data.Field(
-            init_token=BOS_WORD, eos_token=EOS_WORD,
-            pad_token=PAD_WORD)
-
+        try:
+            fields["tgt"] = torchtext.data.Field(
+                init_token=BOS_WORD, eos_token=EOS_WORD,
+                pad_token=PAD_WORD)
+        except:
+            fields["tgt"] = torchtext.legacy.data.Field(
+                init_token=BOS_WORD, eos_token=EOS_WORD,
+                pad_token=PAD_WORD)
         for j in range(n_tgt_features):
             fields["tgt_feat_" + str(j)] = \
                 torchtext.data.Field(init_token=BOS_WORD, eos_token=EOS_WORD,
@@ -238,11 +245,14 @@ class TextDataset(DatasetBase):
                 for j, t in enumerate(sent):
                     alignment[j, i, t] = 1
             return alignment
-
-        fields["src_map"] = torchtext.data.Field(
-            use_vocab=False, dtype=torch.float,
-            postprocessing=make_src, sequential=False)
-
+        try:
+            fields["src_map"] = torchtext.data.Field(
+                use_vocab=False, dtype=torch.float,
+                postprocessing=make_src, sequential=False)
+        except:
+            fields["src_map"] = torchtext.legacy.data.Field(
+                use_vocab=False, dtype=torch.float,
+                postprocessing=make_src, sequential=False)
         def make_tgt(data, vocab):
             """ ? """
             tgt_size = max([t.size(0) for t in data])
@@ -250,15 +260,22 @@ class TextDataset(DatasetBase):
             for i, sent in enumerate(data):
                 alignment[:sent.size(0), i] = sent
             return alignment
-
-        fields["alignment"] = torchtext.data.Field(
-            use_vocab=False, dtype=torch.long,
-            postprocessing=make_tgt, sequential=False)
-
-        fields["indices"] = torchtext.data.Field(
-            use_vocab=False, dtype=torch.long,
-            sequential=False)
-
+        try:
+            fields["alignment"] = torchtext.data.Field(
+                use_vocab=False, dtype=torch.long,
+                postprocessing=make_tgt, sequential=False)
+        except:
+            fields["alignment"] = torchtext.legacy.data.Field(
+                use_vocab=False, dtype=torch.long,
+                postprocessing=make_tgt, sequential=False)
+        try:
+            fields["indices"] = torchtext.data.Field(
+                use_vocab=False, dtype=torch.long,
+                sequential=False)
+        except:
+            fields["indices"] = torchtext.legacy.data.Field(
+                use_vocab=False, dtype=torch.long,
+                sequential=False)
         return fields
 
     @staticmethod
