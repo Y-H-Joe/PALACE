@@ -58,13 +58,19 @@ opt = Namespace(accum_count=4, adagrad_accumulator_init=0, adam_beta1=0.9,
                 warmup_steps=8000, window_size=0.02, word_vec_size=256, world_size=1)
 
 ## multi-GPU
-import onmt
 import torch
 import random
+## onmt
+import onmt
 from onmt.utils.logging import init_logger, logger
 from onmt.inputters.inputter import build_dataset_iter, lazily_load_dataset, \
     _load_fields, _collect_report_features
-    
+
+## PALACE
+import PALACE
+from PALACE.utils.logging import init_logger, logger
+
+
 def run(opt, device_id, error_queue):
     """ run process """
     try:
