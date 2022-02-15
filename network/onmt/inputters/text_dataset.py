@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from functools import partial
 
-import six
+import six #Six is a Python 2 and 3 compatibility library
 import torch
 from torchtext.legacy.data import Field, RawField
 

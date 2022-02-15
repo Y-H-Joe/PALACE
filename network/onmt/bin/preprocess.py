@@ -315,6 +315,7 @@ def main():
     parser = _get_parser()
 
     opt = parser.parse_args()
+    print(opt)
     preprocess(opt)
 
 

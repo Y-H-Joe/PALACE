@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['network\\transfer_learning_202210109.py', 'network\\transfer_SMILES_nn_opennmt_20220205.py', 'network\\PALACE_train.py', 'network\\turn_Vocab_from_0-4-1_to_0-11_torchtext.py']
+recent_files = ['network\\PALACE_train.py', 'network\\PALACE_preprocess.py', 'network\\PALACE\\inputters\\__init__.py', 'network\\onmt\\inputters\\inputter.py', 'network\\PALACE\\inputters\\inputter.py']
 
 [main]
 version = 0.2.0
