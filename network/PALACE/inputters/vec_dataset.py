@@ -39,7 +39,7 @@ except ImportError:
 class VecDataReader(DataReaderBase):
     """Read feature vector data from disk.
     Raises:
-        onmt.inputters.datareader_base.MissingDependencyException: If
+        PALACE.inputters.datareader_base.MissingDependencyException: If
             importing ``np`` fails.
     """
 

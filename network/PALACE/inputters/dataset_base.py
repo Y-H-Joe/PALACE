@@ -95,7 +95,7 @@ class Dataset(TorchtextDataset):
 
     Args:
         fields (dict[str, Field]): a dict with the structure
-            returned by :func:`onmt.inputters.get_fields()`. Usually
+            returned by :func:`PALACE.inputters.get_fields()`. Usually
             that means the dataset side, ``"src"`` or ``"tgt"``. Keys match
             the keys of items yielded by the ``readers``, while values
             are lists of (name, Field) pairs. An attribute with this
@@ -106,8 +106,8 @@ class Dataset(TorchtextDataset):
             the dataset to store multiple "views" of each input, which allows
             for easy implementation of token-level features, mixed word-
             and character-level models, and so on. (See also
-            :class:`onmt.inputters.TextMultiField`.)
-        readers (Iterable[onmt.inputters.DataReaderBase]): Reader objects
+            :class:`PALACE.inputters.TextMultiField`.)
+        readers (Iterable[PALACE.inputters.DataReaderBase]): Reader objects
             for disk-to-dict. The yielded dicts are then processed
             according to ``fields``.
         data (Iterable[Tuple[str, Any]]): (name, ``data_arg``) pairs

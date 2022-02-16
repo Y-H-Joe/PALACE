@@ -61,7 +61,9 @@ def train(opt):
         else:
             shard_base = "train"
         train_iter = build_dataset_iter(shard_base, fields, opt)
-
+    print(opt)
+    import sys
+    sys.exit()
     nb_gpu = len(opt.gpu_ranks)
 
     if opt.world_size > 1:

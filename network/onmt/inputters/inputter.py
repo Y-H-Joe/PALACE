@@ -952,3 +952,7 @@ def build_dataset_iter(corpus_type, fields, opt, is_train=True, multi=False):
 def build_dataset_iter_multiple(train_shards, fields, opt):
     return MultipleDatasetIterator(
         train_shards, fields, "cpu", opt)
+
+def build_dataset_iter_multiple(train_shards, fields, opt):
+    return MultipleDatasetIterator(
+        train_shards, fields, "cpu", opt)

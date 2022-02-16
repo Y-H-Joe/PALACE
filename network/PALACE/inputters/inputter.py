@@ -22,16 +22,19 @@ Contact: yihangjoe@foxmail.com
 
 ####=======================================================================####
 """
-import torchtext
-import torch
-from torchtext.vocab import Vocab
-from torchtext.legacy.data import Field, RawField, LabelField
-from itertools import chain, cycle
-from collections import Counter, defaultdict
 import os
 import codecs
 import math
 import gc
+import glob
+
+import torchtext
+import torch
+from torchtext.vocab import Vocab
+from torchtext.legacy.data import Field, RawField, LabelField
+from torchtext.data.utils import RandomShuffler
+from itertools import chain, cycle
+from collections import Counter, defaultdict
 
 from PALACE.inputters.text_dataset import text_fields, TextMultiField
 from PALACE.inputters.vec_dataset import vec_fields
@@ -435,43 +438,47 @@ class OrderedIterator(torchtext.legacy.data.Iterator):
 
 
 
-def build_dataset_iter(datasets, fields, opt, is_train=True):
+def build_dataset_iter(corpus_type, fields, opt, is_train=True, multi=False):
     """
     This returns user-defined train/validate data iterator for the trainer
     to iterate over. We implement simple ordered iterator strategy here,
     but more sophisticated strategy like curriculum learning is ok too.
     """
-    batch_size = opt.batch_size if is_train else opt.valid_batch_size
-    if is_train and opt.batch_type == "tokens":
-        def batch_size_fn(new, count, sofar):
-            """
-            In token batching scheme, the number of sequences is limited
-            such that the total number of src/tgt tokens (including padding)
-            in a batch <= batch_size
-            """
-            # Maintains the longest src and tgt length in the current batch
-            global max_src_in_batch, max_tgt_in_batch
-            # Reset current longest length at a new batch (count=1)
-            if count == 1:
-                max_src_in_batch = 0
-                max_tgt_in_batch = 0
-            # Src: <bos> w1 ... wN <eos>
-            max_src_in_batch = max(max_src_in_batch, len(new.src) + 2)
-            # Tgt: w1 ... wN <eos>
-            max_tgt_in_batch = max(max_tgt_in_batch, len(new.tgt) + 1)
-            src_elements = count * max_src_in_batch
-            tgt_elements = count * max_tgt_in_batch
-            return max(src_elements, tgt_elements)
-    else:
-        batch_size_fn = None
+    dataset_glob = opt.data + '.' + corpus_type + '.[0-9]*.pt'
+    dataset_paths = list(sorted(
+        glob.glob(dataset_glob),
+        key=lambda p: int(p.split(".")[-2])))
 
-    if opt.gpu_ranks:
-        device = "cuda"
+    if not dataset_paths:
+        if is_train:
+            raise ValueError('Training data %s not found' % dataset_glob)
+        else:
+            return None
+    if multi:
+        batch_size = 1
+        batch_fn = None
+        batch_size_multiple = 1
     else:
-        device = "cpu"
+        batch_size = opt.batch_size if is_train else opt.valid_batch_size
+        batch_fn = max_tok_len \
+            if is_train and opt.batch_type == "tokens" else None
+        batch_size_multiple = 8 if opt.model_dtype == "fp16" else 1
 
-    return DatasetLazyIter(datasets, fields, batch_size, batch_size_fn,
-                           device, is_train)
+    device = "cpu"
+
+    return DatasetLazyIter(
+        dataset_paths,
+        fields,
+        batch_size,
+        batch_fn,
+        batch_size_multiple,
+        device,
+        is_train,
+        opt.pool_factor,
+        repeat=not opt.single_pass,
+        num_batches_multiple=max(opt.accum_count) * opt.world_size,
+        yield_raw_example=multi)
+
 
 class DatasetLazyIter(object):
     """Yield data from sharded dataset files.
@@ -795,3 +802,131 @@ def build_noise_field(src_field, subword=True,
             end_of_sentence_mask[i] = True
     src_field.word_start_mask = word_start_mask
     src_field.end_of_sentence_mask = end_of_sentence_mask
+
+def patch_fields(opt, fields):
+    dvocab = torch.load(opt.data + '.vocab.pt')
+    maybe_cid_field = dvocab.get('corpus_id', None)
+    if maybe_cid_field is not None:
+        fields.update({'corpus_id': maybe_cid_field})
+
+def build_dataset_iter_multiple(train_shards, fields, opt):
+    return MultipleDatasetIterator(
+        train_shards, fields, "cpu", opt)
+
+class MultipleDatasetIterator(object):
+    """
+    This takes a list of iterable objects (DatasetLazyIter) and their
+    respective weights, and yields a batch in the wanted proportions.
+    """
+    def __init__(self,
+                 train_shards,
+                 fields,
+                 device,
+                 opt):
+        self.index = -1
+        self.iterables = []
+        self.weights = []
+        for shard, weight in zip(train_shards, opt.data_weights):
+            if weight > 0:
+                self.iterables.append(
+                    build_dataset_iter(shard, fields, opt, multi=True))
+                self.weights.append(weight)
+        self.init_iterators = True
+        # self.weights = opt.data_weights
+        self.batch_size = opt.batch_size
+        self.batch_size_fn = max_tok_len \
+            if opt.batch_type == "tokens" else None
+        if opt.batch_size_multiple is not None:
+            self.batch_size_multiple = opt.batch_size_multiple
+        else:
+            self.batch_size_multiple = 8 if opt.model_dtype == "fp16" else 1
+        self.device = device
+        # Temporarily load one shard to retrieve sort_key for data_type
+        temp_dataset = torch.load(self.iterables[0]._paths[0])
+        self.sort_key = temp_dataset.sort_key
+        self.random_shuffler = RandomShuffler()
+        self.pool_factor = opt.pool_factor
+        del temp_dataset
+
+    def _iter_datasets(self):
+        if self.init_iterators:
+            self.iterators = [iter(iterable) for iterable in self.iterables]
+            self.init_iterators = False
+        for weight in self.weights:
+            self.index = (self.index + 1) % len(self.iterators)
+            for i in range(weight):
+                yield self.iterators[self.index]
+
+    def _iter_examples(self):
+        for iterator in cycle(self._iter_datasets()):
+            yield next(iterator)
+
+    def __iter__(self):
+        while True:
+            for minibatch in _pool(
+                    self._iter_examples(),
+                    self.batch_size,
+                    self.batch_size_fn,
+                    self.batch_size_multiple,
+                    self.sort_key,
+                    self.random_shuffler,
+                    self.pool_factor):
+                minibatch = sorted(minibatch, key=self.sort_key, reverse=True)
+                yield torchtext.data.Batch(minibatch,
+                                           self.iterables[0].dataset,
+                                           self.device)
+
+def max_tok_len(new, count, sofar):
+    """
+    In token batching scheme, the number of sequences is limited
+    such that the total number of src/tgt tokens (including padding)
+    in a batch <= batch_size
+    """
+    # Maintains the longest src and tgt length in the current batch
+    global max_src_in_batch, max_tgt_in_batch  # this is a hack
+    # Reset current longest length at a new batch (count=1)
+    if count == 1:
+        max_src_in_batch = 0
+        max_tgt_in_batch = 0
+    # Src: [<bos> w1 ... wN <eos>]
+    max_src_in_batch = max(max_src_in_batch, len(new.src[0]) + 2)
+    # Tgt: [w1 ... wM <eos>]
+    max_tgt_in_batch = max(max_tgt_in_batch, len(new.tgt[0]) + 1)
+    src_elements = count * max_src_in_batch
+    tgt_elements = count * max_tgt_in_batch
+    return max(src_elements, tgt_elements)
+
+class IterOnDevice(object):
+    """Sent items from `iterable` on `device_id` and yield."""
+
+    def __init__(self, iterable, device_id):
+        self.iterable = iterable
+        self.device_id = device_id
+
+    @staticmethod
+    def batch_to_device(batch, device_id):
+        """Move `batch` to `device_id`, cpu if `device_id` < 0."""
+        curr_device = batch.indices.device
+        device = torch.device(device_id) if device_id >= 0 \
+            else torch.device('cpu')
+        if curr_device != device:
+            if isinstance(batch.src, tuple):
+                batch.src = tuple([_.to(device) for _ in batch.src])
+            else:
+                batch.src = batch.src.to(device)
+            batch.tgt = batch.tgt.to(device)
+            batch.indices = batch.indices.to(device)
+            batch.alignment = batch.alignment.to(device) \
+                if hasattr(batch, 'alignment') else None
+            batch.src_map = batch.src_map.to(device) \
+                if hasattr(batch, 'src_map') else None
+            batch.align = batch.align.to(device) \
+                if hasattr(batch, 'align') else None
+            batch.corpus_id = batch.corpus_id.to(device) \
+                if hasattr(batch, 'corpus_id') else None
+
+    def __iter__(self):
+        for batch in self.iterable:
+            self.batch_to_device(batch, self.device_id)
+            yield batch
+
