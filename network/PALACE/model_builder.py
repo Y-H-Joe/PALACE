@@ -22,17 +22,29 @@ Contact: yihangjoe@foxmail.com
 
 ####=======================================================================####
 """
+"""
+This file is for models creation, which consults options
+and creates each encoder and decoder accordingly.
+"""
 import re
 
 import torch
 from torch import nn
+from torch.nn.init import xavier_uniform_
 
+import PALACE.modules
+from PALACE.modules import Embeddings, VecEmbedding, CopyGenerator
+from PALACE.modules.util_class import Cast
 from PALACE.utils.logging import logger
 from PALACE.utils.misc import use_gpu
+from PALACE.utils.parse import ArgumentParser
 from PALACE.encoders import str2enc
-from PALACE.modules import Embeddings, VecEmbedding, CopyGenerator, sparse_activations,util_class
 from PALACE.decoders import str2dec
 from PALACE.models import NMTModel
+import PALACE.inputters as inputters
+
+
+
 
 
 def build_embeddings(opt, text_field, for_encoder=True):
@@ -103,6 +115,32 @@ def build_decoder(opt, embeddings):
     return str2dec[dec_type].from_opt(opt, embeddings)
 
 
+def load_test_model(opt, model_path=None):
+    if model_path is None:
+        model_path = opt.models[0]
+    checkpoint = torch.load(model_path,
+                            map_location=lambda storage, loc: storage)
+
+    model_opt = ArgumentParser.ckpt_model_opts(checkpoint['opt'])
+    ArgumentParser.update_model_opts(model_opt)
+    ArgumentParser.validate_model_opts(model_opt)
+    vocab = checkpoint['vocab']
+    if inputters.old_style_vocab(vocab):
+        fields = inputters.load_old_vocab(
+            vocab, opt.data_type, dynamic_dict=model_opt.copy_attn
+        )
+    else:
+        fields = vocab
+
+    model = build_base_model(model_opt, fields, use_gpu(opt), checkpoint,
+                             opt.gpu)
+    if opt.fp32:
+        model.float()
+    model.eval()
+    model.generator.eval()
+    return fields, model, model_opt
+
+
 def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
     """Build a model from opts.
 
@@ -163,13 +201,13 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
     # Build Generator.
     if not model_opt.copy_attn:
         if model_opt.generator_function == "sparsemax":
-            gen_func =sparse_activations.LogSparsemax(dim=-1)
+            gen_func = PALACE.modules.sparse_activations.LogSparsemax(dim=-1)
         else:
             gen_func = nn.LogSoftmax(dim=-1)
         generator = nn.Sequential(
             nn.Linear(model_opt.dec_rnn_size,
                       len(fields["tgt"].base_field.vocab)),
-            util_class.Cast(torch.float32),
+            Cast(torch.float32),
             gen_func
         )
         if model_opt.share_decoder_embeddings:
@@ -207,10 +245,10 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         if model_opt.param_init_glorot:
             for p in model.parameters():
                 if p.dim() > 1:
-                    nn.init.xavier_uniform_(p)
+                    xavier_uniform_(p)
             for p in generator.parameters():
                 if p.dim() > 1:
-                    nn.init.xavier_uniform_(p)
+                    xavier_uniform_(p)
 
         if hasattr(model.encoder, 'embeddings'):
             model.encoder.embeddings.load_pretrained_vectors(

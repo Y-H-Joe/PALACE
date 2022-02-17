@@ -31,7 +31,7 @@ from itertools import cycle
 
 import torch
 
-from PALACE.opts import config_opts,model_opts,train_opts
+#from PALACE.opts import config_opts,model_opts,train_opts
 from PALACE.utils.parse import ArgumentParser
 from PALACE.utils.misc import set_random_seed
 from PALACE.utils.logging import init_logger, logger
@@ -244,13 +244,15 @@ def train(opt):
     else:   # case only CPU
         single_main(opt, -1)
 
-def _get_parser():
-    parser = ArgumentParser(description='train.py')
-
-    config_opts(parser)
-    model_opts(parser)
-    train_opts(parser)
-    return parser
+# =============================================================================
+# def _get_parser():
+#     parser = ArgumentParser(description='PALACE_train.py')
+# 
+#     config_opts(parser)
+#     model_opts(parser)
+#     train_opts(parser)
+#     return parser
+# =============================================================================
 
 def main():
     #parser = _get_parser()

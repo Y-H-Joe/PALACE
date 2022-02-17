@@ -27,6 +27,27 @@ import inspect #inspect模块提供了一些函数来了解现场对象，包括
 import torch
 import random
 
+def tile(x, count, dim=0):
+    """
+    Tiles x on dimension dim count times.
+    """
+    perm = list(range(len(x.size())))
+    if dim != 0:
+        perm[0], perm[dim] = perm[dim], perm[0]
+        x = x.permute(perm).contiguous()
+    out_size = list(x.size())
+    out_size[0] *= count
+    batch = x.size(0)
+    x = x.view(batch, -1) \
+         .transpose(0, 1) \
+         .repeat(count, 1) \
+         .transpose(0, 1) \
+         .contiguous() \
+         .view(*out_size)
+    if dim != 0:
+        x = x.permute(perm).contiguous()
+    return x
+
 def split_corpus(path, shard_size, default=None):
     """yield a `list` containing `shard_size` line of `path`,
     or repeatly generate `default` if `path` is None.
@@ -49,6 +70,22 @@ def _split_corpus(path, shard_size):
                 if not shard:
                     break
                 yield shard
+
+
+
+def report_matrix(row_label, column_label, matrix):
+    header_format = "{:>10.10} " + "{:>10.7} " * len(row_label)
+    row_format = "{:>10.10} " + "{:>10.7f} " * len(row_label)
+    output = header_format.format("", *row_label) + '\n'
+    for word, row in zip(column_label, matrix):
+        max_index = row.index(max(row))
+        row_format = row_format.replace(
+            "{:>10.7f} ", "{:*>10.7f} ", max_index + 1)
+        row_format = row_format.replace(
+            "{:*>10.7f} ", "{:>10.7f} ", max_index)
+        output += row_format.format(word, *row) + '\n'
+        row_format = "{:>10.10} " + "{:>10.7f} " * len(row_label)
+    return output
 
 
 def set_random_seed(seed, is_cuda):

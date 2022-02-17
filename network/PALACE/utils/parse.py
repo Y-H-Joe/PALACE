@@ -65,11 +65,19 @@ class ArgumentParser(cfargparse.ArgumentParser):
             model_opt.dec_rnn_size = model_opt.rnn_size
 
         model_opt.brnn = model_opt.encoder_type == "brnn"
-
-        if model_opt.copy_attn_type is None:
+        ## to understand copy_attn_type, refer
+        ## https://opennmt.net/OpenNMT-py/onmt.modules.html#onmt.modules.GlobalAttention
+        try:
+            if model_opt.copy_attn_type is None:
+                model_opt.copy_attn_type = model_opt.global_attention
+        except:
             model_opt.copy_attn_type = model_opt.global_attention
-
-        if model_opt.alignment_layer is None:
+        try:
+            if model_opt.alignment_layer is None:
+                model_opt.alignment_layer = -2
+                model_opt.lambda_align = 0.0
+                model_opt.full_context_alignment = False
+        except:
             model_opt.alignment_layer = -2
             model_opt.lambda_align = 0.0
             model_opt.full_context_alignment = False
