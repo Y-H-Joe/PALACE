@@ -54,16 +54,19 @@ def build_embeddings(opt, text_field, for_encoder=True):
         text_field(TextMultiField): word and feats field.
         for_encoder(bool): build Embeddings for encoder or decoder?
     """
+    # word_vec_size (int): size of the dictionary of embeddings.
     emb_dim = opt.src_word_vec_size if for_encoder else opt.tgt_word_vec_size
 
-    if opt.model_type == "vec" and for_encoder:
-        return VecEmbedding(
-            opt.feat_vec_size,
-            emb_dim,
-            position_encoding=opt.position_encoding,
-            dropout=(opt.dropout[0] if type(opt.dropout) is list
-                     else opt.dropout),
-        )
+# =============================================================================
+#     if opt.model_type == "vec" and for_encoder:
+#         return VecEmbedding(
+#             opt.feat_vec_size,
+#             emb_dim,
+#             position_encoding=opt.position_encoding,
+#             dropout=(opt.dropout[0] if type(opt.dropout) is list
+#                      else opt.dropout),
+#         )
+# =============================================================================
 
     pad_indices = [f.vocab.stoi[f.pad_token] for _, f in text_field]
     word_padding_idx, feat_pad_indices = pad_indices[0], pad_indices[1:]
@@ -77,6 +80,8 @@ def build_embeddings(opt, text_field, for_encoder=True):
     emb = Embeddings(
         word_vec_size=emb_dim,
         position_encoding=opt.position_encoding,
+        # feat_merge (string): merge action for the features embeddings:
+        # concat, sum or mlp.
         feat_merge=opt.feat_merge,
         feat_vec_exponent=opt.feat_vec_exponent,
         feat_vec_size=opt.feat_vec_size,
@@ -147,7 +152,7 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
     Args:
         model_opt: the option loaded from checkpoint. It's important that
             the opts have been updated and validated. See
-            :class:`onmt.utils.parse.ArgumentParser`.
+            :class:`PALACE.utils.parse.ArgumentParser`.
         fields (dict[str, torchtext.data.Field]):
             `Field` objects for the model.
         gpu (bool): whether to use gpu.

@@ -23,13 +23,14 @@ Contact: yihangjoe@foxmail.com
 ####=======================================================================####
 """
 import codecs #面对复杂文本的读取，尤其是爬虫获得的以及原始的复杂文本，使用open读取后编码不统一的情况，建议用codecs.open()
-import torch
 import glob #glob是python自己带的一个文件操作相关模块，用它可以查找符合自己目的的文件,主要方法就是glob,该方法返回所有匹配的文件路径列表
 from collections import Counter, defaultdict
 import gc # garbage collection
-
+from argparse import Namespace
 from functools import partial #拓展函数的args与kwargs,让原本不兼容的代码可以一起工作
 from multiprocessing import Pool
+
+import torch
 
 from PALACE.utils.parse import ArgumentParser
 from PALACE.utils.misc import split_corpus
@@ -38,24 +39,31 @@ from PALACE.utils.logging import init_logger, logger
 from PALACE.inputters import Dataset,str2sortkey,filter_example,get_fields,str2reader
 from PALACE.inputters.inputter import _load_vocab,_build_fields_vocab,old_style_vocab,load_old_vocab
 
+opt = Namespace(config=None, data_type='text', dynamic_dict=False, features_vocabs_prefix='', 
+                filter_valid=False, image_channel_size=3, log_file='', log_file_level='0', 
+                lower=False, max_shard_size=0, num_threads=32, overwrite=True, 
+                report_every=100000, sample_rate=16000, save_config=None,
+                save_data='data/', seed=3435, shard_size=1000000, share_vocab=True, 
+                shuffle=0, src_dir='', src_seq_length=10000, src_seq_length_trunc=None,
+                src_vocab='', src_vocab_size=10000, src_words_min_frequency=0, 
+                subword_prefix='▁', subword_prefix_is_joiner=False, tgt_seq_length=10000, 
+                tgt_seq_length_trunc=None, tgt_vocab='', tgt_vocab_size=10000, 
+                tgt_words_min_frequency=0, train_align=[None], train_ids=[None],
+                train_src=['data/src-train.txtt'], train_tgt=['data/tgt-train.txtt'],
+                valid_align=None, valid_src='data/src-val.txtt', 
+                valid_tgt='data/tgt-val.txtt', vocab_size_multiple=1, window='hamming',
+                window_size=0.02, window_stride=0.01)
 
 
-def _get_parser():
-    parser = ArgumentParser(description='preprocess.py')
+# =============================================================================
+# def _get_parser():
+#     parser = ArgumentParser(description='preprocess.py')
+# 
+#     config_opts(parser)
+#     preprocess_opts(parser)
+#     return parser
+# =============================================================================
 
-    config_opts(parser)
-    preprocess_opts(parser)
-    return parser
-
-def count_features(path):
-    """
-    path: location of a corpus file with whitespace-delimited tokens and
-                    ￨-delimited features within the token
-    returns: the number of features in the dataset
-    """
-    with codecs.open(path, "r", "utf-8") as f:
-        first_tok = f.readline().split(None, 1)[0]
-        return len(first_tok.split(u"￨")) - 1
 
 def maybe_load_vocab(corpus_type, counters, opt):
     src_vocab = None
@@ -265,6 +273,17 @@ def build_save_dataset(corpus_type, fields, src_reader, tgt_reader,
 
         torch.save(fields, vocab_path)
 
+def count_features(path):
+    """
+    path: location of a corpus file with whitespace-delimited tokens and
+                    ￨-delimited features within the token
+    returns: the number of features in the dataset
+    """
+    with codecs.open(path, "r", "utf-8") as f:
+        # None (the default sep) means split according to any whitespace
+        # 1 in split is maxsplit, Maximum number of splits to do
+        first_tok = f.readline().split(None, 1)[0] 
+        return len(first_tok.split(u"￨")) - 1
 
 def preprocess(opt):
     ArgumentParser.validate_preprocess_args(opt)
@@ -276,8 +295,7 @@ def preprocess(opt):
 
     src_nfeats = 0
     tgt_nfeats = 0
-    src_nfeats = count_features(opt.train_src[0]) if opt.data_type == 'text' \
-        else 0
+    src_nfeats = count_features(opt.train_src[0]) if opt.data_type == 'text' else 0
     tgt_nfeats = count_features(opt.train_tgt[0])  # tgt always text so far
     if len(opt.train_src) > 1 and opt.data_type == 'text':
         for src, tgt in zip(opt.train_src[1:], opt.train_tgt[1:]):
@@ -314,10 +332,10 @@ def preprocess(opt):
             'valid', fields, src_reader, tgt_reader, align_reader, opt)
 
 def main():
-    parser = _get_parser()
+    #parser = _get_parser()
 
-    opt = parser.parse_args()
-    print(opt)
+    #opt = parser.parse_args()
+    #print(opt)
     preprocess(opt)
 
 if __name__ == '__main__':

@@ -22,8 +22,7 @@ Contact: yihangjoe@foxmail.com
 
 ####=======================================================================####
 """
-
-from functools import partial
+from functools import partial #当函数的参数个数太多，需要简化时，使用 functools.partial 可以创建一个新的函数，这个新函数可以固定住原函数的部分参数，从而在调用时更简单
 import six
 
 import torch
@@ -199,17 +198,22 @@ def text_fields(**kwargs):
     feat_delim = u"￨" if n_feats > 0 else None
     for i in range(n_feats + 1):
         name = base_name + "_feat_" + str(i - 1) if i > 0 else base_name
+        
         tokenize = partial(
             _feature_tokenize,
             layer=i,
             truncate=truncate,
             feat_delim=feat_delim)
+        
         use_len = i == 0 and include_lengths
+        
         feat = Field(
             init_token=bos, eos_token=eos,
             pad_token=pad, tokenize=tokenize,
             include_lengths=use_len)
+        
         fields_.append((name, feat))
+        
     assert fields_[0][0] == base_name  # sanity check
     field = TextMultiField(fields_[0][0], fields_[0][1], fields_[1:])
     return field

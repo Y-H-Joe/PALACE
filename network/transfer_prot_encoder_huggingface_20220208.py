@@ -49,7 +49,7 @@ seq = ' '.join([re.sub(r"[UZOB]", "X", sequence) for sequence in list('MIFDGKVAI
 indexed_tokens = tokenizer.encode(seq)
 tokens_tensor = torch.tensor([indexed_tokens])
 ## get prot sequences
-sequences_Example = ["A E T C Z A O","S K T Z P"]
+sequences_Example = ["A E T C Z A O "*500,"S K T Z P"] ## after testing, the input prot seq can more than 2000
 sequences_Example = [re.sub(r"[UZOB]", "X", sequence) for sequence in sequences_Example]
 
 ## Tokenize, encode sequences and load it into the GPU if possibile

@@ -22,6 +22,7 @@ Contact: yihangjoe@foxmail.com
 
 ####=======================================================================####
 """
+"""
 import torch
 from transformers import BertModel, BertTokenizer
 # 这里我们调用bert-base模型，同时模型的词典经过小写处理
@@ -39,8 +40,10 @@ input_ids = torch.tensor([input_ids])
 # 获得BERT模型最后一个隐层结果
 with torch.no_grad():
     last_hidden_states = model(input_ids)[0]  # Models outputs are now tuples
+"""
 
-
+import torch
+x = torch.arange(12)
 
 
 
