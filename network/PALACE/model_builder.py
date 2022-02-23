@@ -80,6 +80,7 @@ def build_embeddings(opt, text_field, for_encoder=True):
     emb = Embeddings(
         word_vec_size=emb_dim,
         position_encoding=opt.position_encoding,
+        protein_encoding = opt.protein_encoding,
         # feat_merge (string): merge action for the features embeddings:
         # concat, sum or mlp.
         feat_merge=opt.feat_merge,

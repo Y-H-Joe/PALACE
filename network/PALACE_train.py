@@ -42,7 +42,8 @@ from PALACE.train_single import main as single_main
 
 # Fix CPU tensor sharing strategy
 torch.multiprocessing.set_sharing_strategy('file_system')
-
+# world_size = 4, gpu_ranks = [0,1,2,3]
+# 多机多卡 refer to https://zhuanlan.zhihu.com/p/38949622
 opt = Namespace(aan_useffn=False, accum_count=[4], accum_steps=[0], 
                 adagrad_accumulator_init=0, adam_beta1=0.9, adam_beta2=0.998, 
                 alignment_heads=0, alignment_layer=-3, apex_opt_level='O1', 
@@ -84,7 +85,8 @@ opt = Namespace(aan_useffn=False, accum_count=[4], accum_steps=[0],
                 tensorboard_log_dir='runs/onmt', tgt_word_vec_size=500, train_from='',
                 train_steps=5, transformer_ff=1024, truncated_decoder=0, 
                 valid_batch_size=32, valid_steps=10000, warmup_steps=8000, 
-                window_size=0.02, word_vec_size=512, world_size=1)
+                window_size=0.02, word_vec_size=512, world_size=1,
+                protein_encoding=True)
 
 class ErrorHandler(object):
     """A class that listens for exceptions in children processes and propagates
@@ -215,6 +217,7 @@ def train(opt):
     if opt.world_size > 1:
         queues = []
         mp = torch.multiprocessing.get_context('spawn')
+        # Semaphore管理一个内置的计数器，每当调用acquire()时内置计数器-1；调用release() 时内置计数器+1
         semaphore = mp.Semaphore(opt.world_size * opt.queue_size)
         # Create a thread to listen for errors in the child processes.
         error_queue = mp.SimpleQueue()

@@ -157,3 +157,5 @@ class ModelSaver(ModelSaverBase):
     def _rm_checkpoint(self, name):
         if os.path.exists(name):
             os.remove(name)
+            
+            

@@ -114,7 +114,8 @@ def main(opt, device_id, batch_queue=None, semaphore=None):
 
     # Build model saver
     model_saver = build_model_saver(model_opt, opt, model, fields, optim)
-
+    
+    # Build model trainer
     trainer = build_trainer(
         opt, device_id, model, fields, optim, model_saver=model_saver)
 

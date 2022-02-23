@@ -55,7 +55,8 @@ def model_opts(parser):
     group.add('--position_encoding', '-position_encoding', action='store_true',
               help="Use a sin to mark relative words positions. "
                    "Necessary for non-RNN style models.")
-
+    group.add('--protein_encoding','-protein_encoding', action = 'store_true',
+              help = "add an protein encoding layer between positional encoding layer and encoding/decoding block.")
     group = parser.add_argument_group('Model-Embedding Features')
     group.add('--feat_merge', '-feat_merge', type=str, default='concat',
               choices=['concat', 'sum', 'mlp'],

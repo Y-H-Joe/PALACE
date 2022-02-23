@@ -23,8 +23,7 @@ Contact: yihangjoe@foxmail.com
 ####=======================================================================####
 """
 
-from PALACE.modules.embeddings import Embeddings, PositionalEncoding, \
-    VecEmbedding
+from PALACE.modules.embeddings import Embeddings, PositionalEncoding, VecEmbedding, ProteinEncoding
 from PALACE.modules.multi_headed_attn import MultiHeadedAttention
 from PALACE.modules.average_attn import AverageAttention
 from PALACE.modules.copy_generator import CopyGenerator,CopyGeneratorLoss,CopyGeneratorLossCompute
@@ -42,7 +41,7 @@ __all__ = ["Elementwise", "context_gate_factory", "ContextGate",
            "GlobalAttention", "ConvMultiStepAttention", "CopyGenerator",
            "CopyGeneratorLoss", "CopyGeneratorLossCompute",
            "MultiHeadedAttention", "Embeddings", "PositionalEncoding",
-           "WeightNormConv2d", "AverageAttention", "VecEmbedding"]
+           "WeightNormConv2d", "AverageAttention", "VecEmbedding","ProteinEncoding"]
 
 """
 from onmt.modules.util_class import Elementwise
