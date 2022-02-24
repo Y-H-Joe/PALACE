@@ -30,7 +30,11 @@ import torch
 import torch.nn as nn
 
 from PALACE.modules.util_class import Elementwise
-
+## protein encoding
+import re
+import sys
+from transformers import BertForMaskedLM, BertTokenizer
+from transformers import pipeline
 
 class PositionalEncoding(nn.Module):
     """Sinusoidal positional encoding for non-recurrent neural networks.
@@ -106,7 +110,10 @@ class ProteinEncoding(nn.Module):
         self.register_buffer('pe', pe)
         self.dropout = nn.Dropout(p=dropout)
         self.dim = dim
-
+    
+    def protein_nn_output(trained_model):
+        
+        pass
     def forward(self, emb, step=None):
         """Embed inputs.
 
@@ -202,7 +209,8 @@ class Embeddings(nn.Module):
                  word_padding_idx,
                  position_encoding=False,
                  protein_encoding = False,
-                 protein_nn = None,
+                 protein_model = None,
+                 protein_tokenizer = None,
                  feat_merge="concat",
                  feat_vec_exponent=0.7,
                  feat_vec_size=-1,
@@ -274,9 +282,25 @@ class Embeddings(nn.Module):
 
         # Building ProteinEncoding
         self.protein_encoding = protein_encoding
+        self.protein_model = protein_model
+        self.protein_tokenizer = protein_tokenizer
+        #sys.exit('{},{},{}'.format(protein_encoding,protein_model,protein_tokenizer))
+        """
+        ## get model
+        if not (isinstance(self.protein_model,type(None)) or isinstance(self.protein_tokenizer,type(None))):
+            try:
+                model = BertForMaskedLM.from_pretrained(self.protein_model)
+                tokenizer = BertTokenizer.from_pretrained(self.protein_tokenizer)
+            except:
+                sys.exit("Unable to load pretrained protein model/tokenizier from {}".format(self.protein_model))
+        ## model to GPU
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        model = model.to(device)
+        model.eval()
         if self.protein_encoding and not isinstance(protein_nn,type(None)):
             ProtEnc = ProteinEncoding(protein_nn,pe)
             self.make_embedding.add_module('ProtEnc', ProtEnc)
+        """
         
         if fix_word_vecs:
             self.word_lut.weight.requires_grad = False

@@ -102,7 +102,13 @@ def main(opt, device_id, batch_queue=None, semaphore=None):
                 logger.info(' * %s vocab size = %d' % (sn, len(sf.vocab)))
 
     # Build model.
-    model = build_model(model_opt, opt, fields, checkpoint)
+# =============================================================================
+#     if not isinstance(None,type(device_id)):
+#         print(device_id)
+#         import sys
+#         sys.exit(opt)
+# =============================================================================
+    model = build_model(model_opt, opt, fields, checkpoint,device_id)
     n_params, enc, dec = _tally_parameters(model)
     logger.info('encoder: %d' % enc)
     logger.info('decoder: %d' % dec)
@@ -153,6 +159,8 @@ def main(opt, device_id, batch_queue=None, semaphore=None):
         valid_iter = IterOnDevice(valid_iter, device_id)
 
     if len(opt.gpu_ranks):
+        import sys
+        sys.exit('ranks:{}'.format(opt.gpu_ranks))
         logger.info('Starting training on GPU: %s' % opt.gpu_ranks)
     else:
         logger.info('Starting training on CPU, could be very slow')

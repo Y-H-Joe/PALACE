@@ -81,6 +81,8 @@ def build_embeddings(opt, text_field, for_encoder=True):
         word_vec_size=emb_dim,
         position_encoding=opt.position_encoding,
         protein_encoding = opt.protein_encoding,
+        protein_model = opt.protein_model,
+        protein_tokenizer = opt.protein_model,
         # feat_merge (string): merge action for the features embeddings:
         # concat, sum or mlp.
         feat_merge=opt.feat_merge,
@@ -270,9 +272,9 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
     return model
 
 
-def build_model(model_opt, opt, fields, checkpoint):
+def build_model(model_opt, opt, fields, checkpoint,device_id):
     logger.info('Building model...')
-    model = build_base_model(model_opt, fields, use_gpu(opt), checkpoint)
+    model = build_base_model(model_opt, fields, use_gpu(opt), checkpoint,device_id)
     logger.info(model)
     return model
 

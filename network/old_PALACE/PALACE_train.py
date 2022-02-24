@@ -1,23 +1,49 @@
-#!/usr/bin/env python
-"""Train models."""
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Feb 10 17:03:18 2022
+
+@author: Yihang Zhou
+
+Contact: yihangjoe@foxmail.com
+         https://github.com/Y-H-Joe/
+
+####============================ description ==============================####
+
+=================================== input =====================================
+
+=================================== output ====================================
+
+================================= parameters ==================================
+
+=================================== example ===================================
+
+=================================== warning ===================================
+
+####=======================================================================####
+"""
+
+## prepare args
+from argparse import Namespace
 import os
-import signal
-import torch
-
-import onmt.opts as opts
-import onmt.utils.distributed
-
-from onmt.utils.misc import set_random_seed
-from onmt.utils.logging import init_logger, logger
-from onmt.train_single import main as single_main
-from onmt.utils.parse import ArgumentParser
-from onmt.inputters.inputter import build_dataset_iter, patch_fields, \
-    load_old_vocab, old_style_vocab, build_dataset_iter_multiple
-
+import signal  # signal可以被用来进程间通信和异步处理
 from itertools import cycle
 
+import torch
 
-from argparse import Namespace
+#from PALACE.opts import config_opts,model_opts,train_opts
+from PALACE.utils.parse import ArgumentParser
+from PALACE.utils.misc import set_random_seed
+from PALACE.utils.logging import init_logger, logger
+from PALACE.inputters.inputter import build_dataset_iter, patch_fields, \
+    load_old_vocab, old_style_vocab, build_dataset_iter_multiple
+from PALACE.utils.distributed import multi_init
+from PALACE.train_single import main as single_main
+
+# Fix CPU tensor sharing strategy
+torch.multiprocessing.set_sharing_strategy('file_system')
+# world_size = 4, gpu_ranks = [0,1,2,3]
+# 多机多卡 refer to https://zhuanlan.zhihu.com/p/38949622
 opt = Namespace(aan_useffn=False, accum_count=[4], accum_steps=[0], 
                 adagrad_accumulator_init=0, adam_beta1=0.9, adam_beta2=0.998, 
                 alignment_heads=0, alignment_layer=-3, apex_opt_level='O1', 
@@ -59,13 +85,91 @@ opt = Namespace(aan_useffn=False, accum_count=[4], accum_steps=[0],
                 tensorboard_log_dir='runs/onmt', tgt_word_vec_size=500, train_from='',
                 train_steps=5, transformer_ff=1024, truncated_decoder=0, 
                 valid_batch_size=32, valid_steps=10000, warmup_steps=8000, 
-                window_size=0.02, word_vec_size=512, world_size=1)
+                window_size=0.02, word_vec_size=512, world_size=1,
+                protein_encoding=True, protein_model = './trained_models/',
+                protein_tokenizer = './trained_models')
+
+class ErrorHandler(object):
+    """A class that listens for exceptions in children processes and propagates
+    the tracebacks to the parent process."""
+
+    def __init__(self, error_queue):
+        """ init error handler """
+        import signal
+        import threading
+        self.error_queue = error_queue
+        self.children_pids = []
+        self.error_thread = threading.Thread(
+            target=self.error_listener, daemon=True)
+        self.error_thread.start()
+        signal.signal(signal.SIGUSR1, self.signal_handler)
+
+    def add_child(self, pid):
+        """ error handler """
+        self.children_pids.append(pid)
+
+    def error_listener(self):
+        """ error listener """
+        (rank, original_trace) = self.error_queue.get()
+        self.error_queue.put((rank, original_trace))
+        os.kill(os.getpid(), signal.SIGUSR1)
+
+    def signal_handler(self, signalnum, stackframe):
+        """ signal handler """
+        for pid in self.children_pids:
+            os.kill(pid, signal.SIGINT)  # kill children processes
+        (rank, original_trace) = self.error_queue.get()
+        msg = """\n\n-- Tracebacks above this line can probably
+                 be ignored --\n\n"""
+        msg += original_trace
+        raise Exception(msg)
+
+def run(opt, device_id, error_queue, batch_queue, semaphore):
+    """ run process """
+    try:
+        gpu_rank = multi_init(opt, device_id)
+        if gpu_rank != opt.gpu_ranks[device_id]:
+            raise AssertionError("An error occurred in \
+                  Distributed initialization")
+        single_main(opt, device_id, batch_queue, semaphore)
+    except KeyboardInterrupt:
+        pass  # killed by parent, do nothing
+    except Exception:
+        # propagate exception to parent process, keeping original traceback
+        import traceback
+        error_queue.put((opt.gpu_ranks[device_id], traceback.format_exc()))
 
 
+def batch_producer(generator_to_serve, queues, semaphore, opt):
+    init_logger(opt.log_file)
+    set_random_seed(opt.seed, False)
+    # generator_to_serve = iter(generator_to_serve)
 
-# Fix CPU tensor sharing strategy
-torch.multiprocessing.set_sharing_strategy('file_system')
+    def pred(x):
+        """
+        Filters batches that belong only
+        to gpu_ranks of current node
+        """
+        for rank in opt.gpu_ranks:
+            if x[0] % opt.world_size == rank:
+                return True
 
+    generator_to_serve = filter(
+        pred, enumerate(generator_to_serve))
+
+    def next_batch(device_id):
+        new_batch = next(generator_to_serve)
+        semaphore.acquire()
+        return new_batch[1]
+
+    b = next_batch(0)
+
+    for device_id, q in cycle(enumerate(queues)):
+        b.dataset = None
+        # hack to dodge unpicklable `dict_keys`
+        b.fields = list(b.fields)
+        q.put(b)
+        b = next_batch(device_id)
 
 def train(opt):
     ArgumentParser.validate_train_opts(opt)
@@ -106,6 +210,7 @@ def train(opt):
             shard_base = "train_" + opt.data_ids[0]
         else:
             shard_base = "train"
+        #print(opt)
         train_iter = build_dataset_iter(shard_base, fields, opt)
 
     nb_gpu = len(opt.gpu_ranks)
@@ -113,6 +218,7 @@ def train(opt):
     if opt.world_size > 1:
         queues = []
         mp = torch.multiprocessing.get_context('spawn')
+        # Semaphore管理一个内置的计数器，每当调用acquire()时内置计数器-1；调用release() 时内置计数器+1
         semaphore = mp.Semaphore(opt.world_size * opt.queue_size)
         # Create a thread to listen for errors in the child processes.
         error_queue = mp.SimpleQueue()
@@ -142,107 +248,21 @@ def train(opt):
     else:   # case only CPU
         single_main(opt, -1)
 
-
-def batch_producer(generator_to_serve, queues, semaphore, opt):
-    init_logger(opt.log_file)
-    set_random_seed(opt.seed, False)
-    # generator_to_serve = iter(generator_to_serve)
-
-    def pred(x):
-        """
-        Filters batches that belong only
-        to gpu_ranks of current node
-        """
-        for rank in opt.gpu_ranks:
-            if x[0] % opt.world_size == rank:
-                return True
-
-    generator_to_serve = filter(
-        pred, enumerate(generator_to_serve))
-
-    def next_batch(device_id):
-        new_batch = next(generator_to_serve)
-        semaphore.acquire()
-        return new_batch[1]
-
-    b = next_batch(0)
-
-    for device_id, q in cycle(enumerate(queues)):
-        b.dataset = None
-        # hack to dodge unpicklable `dict_keys`
-        b.fields = list(b.fields)
-        q.put(b)
-        b = next_batch(device_id)
-
-
-def run(opt, device_id, error_queue, batch_queue, semaphore):
-    """ run process """
-    try:
-        gpu_rank = onmt.utils.distributed.multi_init(opt, device_id)
-        if gpu_rank != opt.gpu_ranks[device_id]:
-            raise AssertionError("An error occurred in \
-                  Distributed initialization")
-        single_main(opt, device_id, batch_queue, semaphore)
-    except KeyboardInterrupt:
-        pass  # killed by parent, do nothing
-    except Exception:
-        # propagate exception to parent process, keeping original traceback
-        import traceback
-        error_queue.put((opt.gpu_ranks[device_id], traceback.format_exc()))
-
-
-class ErrorHandler(object):
-    """A class that listens for exceptions in children processes and propagates
-    the tracebacks to the parent process."""
-
-    def __init__(self, error_queue):
-        """ init error handler """
-        import signal
-        import threading
-        self.error_queue = error_queue
-        self.children_pids = []
-        self.error_thread = threading.Thread(
-            target=self.error_listener, daemon=True)
-        self.error_thread.start()
-        signal.signal(signal.SIGUSR1, self.signal_handler)
-
-    def add_child(self, pid):
-        """ error handler """
-        self.children_pids.append(pid)
-
-    def error_listener(self):
-        """ error listener """
-        (rank, original_trace) = self.error_queue.get()
-        self.error_queue.put((rank, original_trace))
-        os.kill(os.getpid(), signal.SIGUSR1)
-
-    def signal_handler(self, signalnum, stackframe):
-        """ signal handler """
-        for pid in self.children_pids:
-            os.kill(pid, signal.SIGINT)  # kill children processes
-        (rank, original_trace) = self.error_queue.get()
-        msg = """\n\n-- Tracebacks above this line can probably
-                 be ignored --\n\n"""
-        msg += original_trace
-        raise Exception(msg)
-
-
-def _get_parser():
-    parser = ArgumentParser(description='train.py')
-
-    opts.config_opts(parser)
-    opts.model_opts(parser)
-    opts.train_opts(parser)
-    return parser
-
+# =============================================================================
+# def _get_parser():
+#     parser = ArgumentParser(description='PALACE_train.py')
+# 
+#     config_opts(parser)
+#     model_opts(parser)
+#     train_opts(parser)
+#     return parser
+# =============================================================================
 
 def main():
     #parser = _get_parser()
-
     #opt = parser.parse_args()
-    print(opt)
+    #print(opt)
     train(opt)
-
 
 if __name__ == "__main__":
     main()
