@@ -423,8 +423,7 @@ def try_gpu(i=0):
 #%% Preprocess
 def truncate_pad(line, num_steps, padding_token):
     """截断或填充文本序列
-
-    Defined in :numref:`sec_machine_translation`"""
+    """
     if len(line) > num_steps:
         return line[:num_steps]  # 截断
     return line + [padding_token] * (num_steps - len(line))  # 填充
@@ -432,44 +431,21 @@ def truncate_pad(line, num_steps, padding_token):
 
 def build_array_nmt(lines, vocab, num_steps):
     """将机器翻译的文本序列转换成小批量
-
-    Defined in :numref:`subsec_mt_data_loading`"""
-    lines = [vocab[l] for l in lines]
-    lines = [l + [vocab['<eos>']] for l in lines]
+    """
+    lines = [vocab[l] for l in lines] # tokens to idx
+    lines = [l + [vocab['<eos>']] for l in lines] # add idx of <eos> to each line
+    # truncate or padding using idx of <pad> to be num_steps length
     array = torch.tensor([truncate_pad(
         l, num_steps, vocab['<pad>']) for l in lines])
+    # figure out the actual length of each line (remove the padding ones)
     valid_len = reduce_sum(
         astype(array != vocab['<pad>'], torch.int32), 1)
     return array, valid_len
 
-def read_data_nmt():
-    """载入“英语－法语”数据集
-    # TO-DO
-    Defined in :numref:`sec_machine_translation`"""
-    data_dir = d2l.download_extract('fra-eng')
-    with open(os.path.join(data_dir, 'fra.txt'), 'r',
-             encoding='utf-8') as f:
-        return f.read()
-
-def tokenize_nmt(text, num_examples=None):
-    """词元化“英语－法语”数据数据集
-
-    Defined in :numref:`sec_machine_translation`"""
-    source, target = [], []
-    for i, line in enumerate(text.split('\n')):
-        if num_examples and i > num_examples:
-            break
-        parts = line.split('\t')
-        if len(parts) == 2:
-            source.append(parts[0].split(' '))
-            target.append(parts[1].split(' '))
-    return source, target
-
 
 def count_corpus(tokens):
     """统计词元的频率
-
-    Defined in :numref:`sec_text_preprocessing`"""
+    """
     # 这里的tokens是1D列表或2D列表
     if len(tokens) == 0 or isinstance(tokens[0], list):
         # 将词元列表展平成一个列表
@@ -524,11 +500,33 @@ class Vocab:
 
 def load_array(data_arrays, batch_size, is_train=True):
     """构造一个PyTorch数据迭代器
-
-    Defined in :numref:`sec_linear_concise`"""
+    """
     dataset = data.TensorDataset(*data_arrays)
     return data.DataLoader(dataset, batch_size, shuffle=is_train)
 
+
+def read_data_nmt():
+    """载入“英语－法语”数据集
+    # TO-DO
+    """
+    data_dir = d2l.download_extract('fra-eng')
+    with open(os.path.join(data_dir, 'fra.txt'), 'r',
+             encoding='utf-8') as f:
+        return f.read()
+
+
+def tokenize_nmt(text, num_examples=None):
+    """词元化“英语－法语”数据数据集
+    """
+    source, target = [], []
+    for i, line in enumerate(text.split('\n')):
+        if num_examples and i > num_examples:
+            break
+        parts = line.split('\t')
+        if len(parts) == 2:
+            source.append(parts[0].split(' '))
+            target.append(parts[1].split(' '))
+    return source, target
 
 def preprocess_nmt(text):
     """预处理“英语－法语”数据集
@@ -547,12 +545,23 @@ def preprocess_nmt(text):
            for i, char in enumerate(text)]
     return ''.join(out)
 
-def load_data_nmt(batch_size, num_steps, num_examples=600):
-    """返回翻译数据集的迭代器和词表
+def read_data(data_dir,src_col = 3, tgt_col = 4, sep = '\t'):
+    source = []
+    target = []
+    with open(data_dir,'r') as r:
+        for line in r:
+            line_split = line.strip().split(sep)
+            source.append(line_split[src_col].split(' '))
+            target.append(line_split[tgt_col].split(' '))
+    return source, target
 
-    Defined in :numref:`subsec_mt_data_loading`"""
-    text = preprocess_nmt(read_data_nmt())
-    source, target = tokenize_nmt(text, num_examples)
+#def load_data_nmt(batch_size, num_steps, num_examples=600):
+def load_data_nmt(data_dir,batch_size, num_steps):
+    """返回翻译数据集的迭代器和词表
+    """
+    #text = preprocess_nmt(read_data_nmt())
+    #source, target = tokenize_nmt(text, num_examples)
+    source, target = read_data(data_dir)
     src_vocab = Vocab(source, min_freq=2,
                           reserved_tokens=['<pad>', '<bos>', '<eos>'])
     tgt_vocab = Vocab(target, min_freq=2,
@@ -568,7 +577,6 @@ def load_data_nmt(batch_size, num_steps, num_examples=600):
 class Accumulator:
     """在n个变量上累加"""
     def __init__(self, n):
-        """Defined in :numref:`sec_softmax_scratch`"""
         self.data = [0.0] * n
 
     def add(self, *args):
@@ -662,13 +670,17 @@ def train_seq2seq(net, data_iter, lr, num_epochs, tgt_vocab, device):
     print(f'loss {metric[0] / metric[1]:.3f}, {metric[1] / timer.stop():.1f} '
         f'tokens/sec on {str(device)}')
 
+# num_steps: window size, 时间步, ref d2l 8.1 and 8.3
 num_hiddens, num_layers, dropout, batch_size, num_steps = 32, 2, 0.1, 64, 10
 lr, num_epochs, device = 0.005, 200, try_gpu()
 ffn_num_input, ffn_num_hiddens, num_heads = 32, 64, 4
 key_size, query_size, value_size = 32, 32, 32
 norm_shape = [32]
 
-train_iter, src_vocab, tgt_vocab = load_data_nmt(batch_size, num_steps)
+data_dir = 'data/sample_train'
+# data 分成300份训练。但是要保证vocab一样。能存储vocab，能加载vocab
+train_iter2, src_vocab2, tgt_vocab2 = load_data_nmt(data_dir,batch_size, num_steps)
+#train_iter, src_vocab, tgt_vocab = load_data_nmt(batch_size, num_steps)
 
 encoder = TransformerEncoder(
     len(src_vocab), key_size, query_size, value_size, num_hiddens,
