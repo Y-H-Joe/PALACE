@@ -27,6 +27,8 @@ import os
 import time
 import numpy as np
 from collections import Counter
+import pickle
+import copy
 import torch
 from torch import nn
 from torch.utils import data
@@ -147,6 +149,8 @@ class MultiHeadAttention(nn.Module):
         super(MultiHeadAttention, self).__init__(**kwargs)
         self.num_heads = num_heads
         self.attention = DotProductAttention(dropout)
+        # nn.Linear can accept N-D tensor
+        # ref https://stackoverflow.com/questions/58587057/multi-dimensional-inputs-in-pytorch-linear-method
         self.W_q = nn.Linear(query_size, num_hiddens, bias=bias)
         self.W_k = nn.Linear(key_size, num_hiddens, bias=bias)
         self.W_v = nn.Linear(value_size, num_hiddens, bias=bias)
@@ -237,11 +241,31 @@ class Encoder(nn.Module):
     def forward(self, X, *args):
         raise NotImplementedError
 
+class ProteinEncoding(nn.Module):
+    """
+    protein encoding block.
+    The input includes the protein feature matrix from huggingface pre-trained 
+    model (size is len(prot) * 30), and the SMILES feature vector (size is len(vocab) * 1).
+    The output of this block is protein and SMILES interaction matrix (size is len(vocab) * 1).
+    """
+    def __init__(self, num_hiddens, dropout, max_len=1000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(dropout)
+        # 创建一个足够长的P
+        self.P = torch.zeros((1, max_len, num_hiddens))
+        X = torch.arange(max_len, dtype=torch.float32).reshape(
+            -1, 1) / torch.pow(10000, torch.arange(
+            0, num_hiddens, 2, dtype=torch.float32) / num_hiddens)
+        self.P[:, :, 0::2] = torch.sin(X)
+        self.P[:, :, 1::2] = torch.cos(X)
+
+    def forward(self, X):
+        X = X + self.P[:, :X.shape[1], :].to(X.device)
+        return self.dropout(X)
 
 class PositionalEncoding(nn.Module):
     """位置编码
-
-    Defined in :numref:`sec_self-attention-and-positional-encoding`"""
+    """
     def __init__(self, num_hiddens, dropout, max_len=1000):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(dropout)
@@ -266,6 +290,10 @@ class TransformerEncoder(Encoder):
         self.num_hiddens = num_hiddens
         self.embedding = nn.Embedding(vocab_size, num_hiddens)
         self.pos_encoding = PositionalEncoding(num_hiddens, dropout)
+        
+        # here implement ProteinEncoding
+        self.prot_encoding = ProteinEncoding(num_hiddens, dropout)
+        
         self.blks = nn.Sequential()
         for i in range(num_layers):
             self.blks.add_module("block"+str(i),
@@ -278,11 +306,14 @@ class TransformerEncoder(Encoder):
         # 因此嵌入值乘以嵌入维度的平方根进行缩放，
         # 然后再与位置编码相加。
         X = self.pos_encoding(self.embedding(X) * math.sqrt(self.num_hiddens))
+        
+        # pass to prot_encoding
+        X = self.prot_encoding(X)
+        
         self.attention_weights = [None] * len(self.blks)
         for i, blk in enumerate(self.blks):
             X = blk(X, valid_lens)
-            self.attention_weights[
-                i] = blk.attention.attention.attention_weights
+            self.attention_weights[i] = blk.attention.attention.attention_weights
         return X
 
 
@@ -366,6 +397,10 @@ class TransformerDecoder(AttentionDecoder):
         self.num_layers = num_layers
         self.embedding = nn.Embedding(vocab_size, num_hiddens)
         self.pos_encoding = PositionalEncoding(num_hiddens, dropout)
+        
+        # here implement ProteinEncoding
+        self.prot_encoding = ProteinEncoding(num_hiddens, dropout)
+        
         self.blks = nn.Sequential()
         for i in range(num_layers):
             self.blks.add_module("block"+str(i),
@@ -456,7 +491,6 @@ def count_corpus(tokens):
 class Vocab:
     """文本词表"""
     def __init__(self, tokens=None, min_freq=0, reserved_tokens=None):
-        """Defined in :numref:`sec_text_preprocessing`"""
         if tokens is None:
             tokens = []
         if reserved_tokens is None:
@@ -480,6 +514,7 @@ class Vocab:
         return len(self.idx_to_token)
 
     def __getitem__(self, tokens):
+        # 回复调用自身，使得即使输入是list/tuple也能带着[]返回0
         if not isinstance(tokens, (list, tuple)):
             return self.token_to_idx.get(tokens, self.unk)
         return [self.__getitem__(token) for token in tokens]
@@ -546,6 +581,10 @@ def preprocess_nmt(text):
     return ''.join(out)
 
 def read_data(data_dir,src_col = 3, tgt_col = 4, sep = '\t'):
+    """
+    read txt file, return list of split tokens (one line one sublist), like:
+        [[t1,t2],[t3,t4],...] # t1,t2 are in the same line
+    """
     source = []
     target = []
     with open(data_dir,'r') as r:
@@ -555,17 +594,41 @@ def read_data(data_dir,src_col = 3, tgt_col = 4, sep = '\t'):
             target.append(line_split[tgt_col].split(' '))
     return source, target
 
+def save_vocab(vocab,vocab_dir):
+    """
+    save vocab class using pickle
+    """
+    with open(vocab_dir,'wb') as o:
+        pickle.dump(vocab,o,pickle.HIGHEST_PROTOCOL)
+    
+def retrieve_vocab(vocab_dir):
+    """
+    retrieve vocab class using pickle
+    """
+    with open(vocab_dir,'rb') as r:
+        return pickle.load(r)
+
 #def load_data_nmt(batch_size, num_steps, num_examples=600):
-def load_data_nmt(data_dir,batch_size, num_steps):
+def load_data_nmt(data_dir,batch_size, num_steps,vocab_dir = None):
     """返回翻译数据集的迭代器和词表
+        vocab_dir: [src_vocab,tgt_vocab]
     """
     #text = preprocess_nmt(read_data_nmt())
     #source, target = tokenize_nmt(text, num_examples)
     source, target = read_data(data_dir)
-    src_vocab = Vocab(source, min_freq=2,
-                          reserved_tokens=['<pad>', '<bos>', '<eos>'])
-    tgt_vocab = Vocab(target, min_freq=2,
-                          reserved_tokens=['<pad>', '<bos>', '<eos>'])
+    
+    if vocab_dir:
+        assert type(vocab_dir) == list
+        src_vocab = retrieve_vocab(vocab_dir[0])
+        tgt_vocab = retrieve_vocab(vocab_dir[1])
+    else:
+        src_vocab = Vocab(source, min_freq=0,
+                              reserved_tokens=['<pad>', '<bos>', '<eos>'])
+        tgt_vocab = Vocab(target, min_freq=0,
+                              reserved_tokens=['<pad>', '<bos>', '<eos>'])
+        save_vocab(src_vocab,'./PALACE/src_vocab.pkl')
+        save_vocab(tgt_vocab,'./PALACE/tgt_vocab.pkl')
+    
     src_array, src_valid_len = build_array_nmt(source, src_vocab, num_steps)
     tgt_array, tgt_valid_len = build_array_nmt(target, tgt_vocab, num_steps)
     data_arrays = (src_array, src_valid_len, tgt_array, tgt_valid_len)
@@ -591,7 +654,6 @@ class Accumulator:
 class Timer:
     """记录多次运行时间"""
     def __init__(self):
-        """Defined in :numref:`subsec_linear_model`"""
         self.times = []
         self.start()
 
@@ -631,8 +693,7 @@ reduce_mean = lambda x, *args, **kwargs: x.mean(*args, **kwargs)
 #%% Training
 def train_seq2seq(net, data_iter, lr, num_epochs, tgt_vocab, device):
     """训练序列到序列模型
-
-    Defined in :numref:`sec_seq2seq_decoder`"""
+"""
     def xavier_init_weights(m):
         if type(m) == nn.Linear:
             nn.init.xavier_uniform_(m.weight)
@@ -671,15 +732,25 @@ def train_seq2seq(net, data_iter, lr, num_epochs, tgt_vocab, device):
         f'tokens/sec on {str(device)}')
 
 # num_steps: window size, 时间步, ref d2l 8.1 and 8.3
-num_hiddens, num_layers, dropout, batch_size, num_steps = 32, 2, 0.1, 64, 10
+# num_hiddens: also determines the output feature size of embeddings
+# um_layers: number of blocks (same for encoder and decoder)
+
+
+num_hiddens, num_layers, dropout, batch_size, num_steps = 256, 2, 0.1, 64, 10
 lr, num_epochs, device = 0.005, 200, try_gpu()
 ffn_num_input, ffn_num_hiddens, num_heads = 32, 64, 4
 key_size, query_size, value_size = 32, 32, 32
 norm_shape = [32]
 
-data_dir = 'data/sample_train'
+data_dir = 'data/sample_test'
+first_train = True
 # data 分成300份训练。但是要保证vocab一样。能存储vocab，能加载vocab
-train_iter2, src_vocab2, tgt_vocab2 = load_data_nmt(data_dir,batch_size, num_steps)
+if first_train:
+    train_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size, num_steps)
+else:
+    # if not first train, will use former vocab
+    vocab_dir = ['PALACE/src_vocab.pkl','PALACE/tgt_vocab.pkl']
+    train_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size, num_steps,vocab_dir)
 #train_iter, src_vocab, tgt_vocab = load_data_nmt(batch_size, num_steps)
 
 encoder = TransformerEncoder(
