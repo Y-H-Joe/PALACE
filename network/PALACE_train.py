@@ -28,11 +28,13 @@ import time
 import numpy as np
 from collections import Counter
 import pickle
-import copy
+import re
 import torch
 from torch import nn
 from torch.utils import data
 from d2l import torch as d2l
+from transformers import BertForMaskedLM, BertTokenizer
+seed = 3434
 
 # ==============================Model building=================================
 #%% Model building
@@ -48,32 +50,6 @@ def grad_clipping(net, theta):
     if norm > theta:
         for param in params:
             param.grad[:] *= theta / norm
-
-def transpose_qkv(X, num_heads):
-    """为了多注意力头的并行计算而变换形状
-
-    Defined in :numref:`sec_multihead-attention`"""
-    # 输入X的形状:(batch_size，查询或者“键－值”对的个数，num_hiddens)
-    # 输出X的形状:(batch_size，查询或者“键－值”对的个数，num_heads，
-    # num_hiddens/num_heads)
-    X = X.reshape(X.shape[0], X.shape[1], num_heads, -1)
-
-    # 输出X的形状:(batch_size，num_heads，查询或者“键－值”对的个数,
-    # num_hiddens/num_heads)
-    X = X.permute(0, 2, 1, 3)
-
-    # 最终输出的形状:(batch_size*num_heads,查询或者“键－值”对的个数,
-    # num_hiddens/num_heads)
-    return X.reshape(-1, X.shape[2], X.shape[3])
-
-
-def transpose_output(X, num_heads):
-    """逆转transpose_qkv函数的操作
-
-    Defined in :numref:`sec_multihead-attention`"""
-    X = X.reshape(-1, num_heads, X.shape[1], X.shape[2])
-    X = X.permute(0, 2, 1, 3)
-    return X.reshape(X.shape[0], X.shape[1], -1)
 
 def sequence_mask(X, valid_len, value=0):
     """在序列中屏蔽不相关的项
@@ -120,11 +96,132 @@ class MaskedSoftmaxCELoss(nn.CrossEntropyLoss):
         weighted_loss = (unweighted_loss * weights).mean(dim=1)
         return weighted_loss
 
+def transpose_qkv(X, num_heads):
+    """为了多注意力头的并行计算而变换形状
+    """
+    # 输入X的形状:(batch_size，查询或者“键－值”对的个数，num_hiddens)
+    # 输出X的形状:(batch_size，查询或者“键－值”对的个数，num_heads，
+    # num_hiddens/num_heads)
+    X = X.reshape(X.shape[0], X.shape[1], num_heads, -1)
+
+    # 输出X的形状:(batch_size，num_heads，查询或者“键－值”对的个数,
+    # num_hiddens/num_heads)
+    X = X.permute(0, 2, 1, 3)
+
+    # 最终输出的形状:(batch_size*num_heads,查询或者“键－值”对的个数,
+    # num_hiddens/num_heads)
+    return X.reshape(-1, X.shape[2], X.shape[3])
+
+def transpose_output(X, num_heads):
+    """逆转transpose_qkv函数的操作
+
+    Defined in :numref:`sec_multihead-attention`"""
+    X = X.reshape(-1, num_heads, X.shape[1], X.shape[2])
+    X = X.permute(0, 2, 1, 3)
+    return X.reshape(X.shape[0], X.shape[1], -1)
+
+
+class PositionWiseFFN(nn.Module):
+    """基于位置的前馈网络, change the last dimension"""
+    def __init__(self, ffn_num_input, ffn_num_hiddens, ffn_num_outputs,
+                 **kwargs):
+        super(PositionWiseFFN, self).__init__(**kwargs)
+        self.dense1 = nn.Linear(ffn_num_input, ffn_num_hiddens)
+        self.relu = nn.ReLU()
+        self.dense2 = nn.Linear(ffn_num_hiddens, ffn_num_outputs)
+
+    def forward(self, X):
+        """ simply propagate forward """
+        return self.dense2(self.relu(self.dense1(X)))
+
+class AddNorm(nn.Module):
+    """残差连接后进行层规范化,
+    drop out, add and layer normalization"""
+    def __init__(self, normalized_shape, dropout, **kwargs):
+        super(AddNorm, self).__init__(**kwargs)
+        self.dropout = nn.Dropout(dropout)
+        self.ln = nn.LayerNorm(normalized_shape)
+
+    def forward(self, X, Y):
+        """ add """
+# =============================================================================
+#         print('X:',X)
+#         print('Y:',Y)
+#         print(self.dropout(Y))
+#         print(self.dropout(Y)+X)
+# =============================================================================
+        return self.ln(self.dropout(Y) + X)
+
+class Encoder(nn.Module):
+    """编码器-解码器架构的基本编码器接口"""
+    def __init__(self, **kwargs):
+        super(Encoder, self).__init__(**kwargs)
+
+    def forward(self, X, *args):
+        raise NotImplementedError
+
+class PositionalEncoding(nn.Module):
+    """位置编码
+    """
+    def __init__(self, num_hiddens, dropout, max_len=1000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(dropout)
+        # 创建一个足够长的P
+        self.P = torch.zeros((1, max_len, num_hiddens))
+        X = torch.arange(max_len, dtype=torch.float32).reshape(
+            -1, 1) / torch.pow(10000, torch.arange(
+            0, num_hiddens, 2, dtype=torch.float32) / num_hiddens)
+        self.P[:, :, 0::2] = torch.sin(X)
+        self.P[:, :, 1::2] = torch.cos(X)
+
+    def forward(self, X):
+        X = X + self.P[:, :X.shape[1], :].to(X.device)
+        return self.dropout(X)
+
+class MultiHeadAttention(nn.Module):
+    """多头注意力
+    """
+    def __init__(self, key_size, query_size, value_size, num_hiddens,
+                 num_heads, dropout, bias=False, **kwargs):
+        super(MultiHeadAttention, self).__init__(**kwargs)
+        self.num_heads = num_heads
+        self.attention = DotProductAttention(dropout)
+        # nn.Linear can accept N-D tensor
+        # ref https://stackoverflow.com/questions/58587057/multi-dimensional-inputs-in-pytorch-linear-method
+        self.W_q = nn.Linear(query_size, num_hiddens, bias=bias)
+        self.W_k = nn.Linear(key_size, num_hiddens, bias=bias)
+        self.W_v = nn.Linear(value_size, num_hiddens, bias=bias)
+        self.W_o = nn.Linear(num_hiddens, num_hiddens, bias=bias)
+
+    def forward(self, queries, keys, values, valid_lens):
+        # queries，keys，values的形状:
+        # (batch_size，查询或者“键－值”对的个数，num_hiddens)
+        # valid_lens　的形状:
+        # (batch_size，)或(batch_size，查询的个数)
+        # 经过变换后，输出的queries，keys，values　的形状:
+        # (batch_size*num_heads，查询或者“键－值”对的个数，
+        # num_hiddens/num_heads)
+        queries = transpose_qkv(self.W_q(queries), self.num_heads)
+        keys = transpose_qkv(self.W_k(keys), self.num_heads)
+        values = transpose_qkv(self.W_v(values), self.num_heads)
+
+        if valid_lens is not None:
+            # 在轴0，将第一项（标量或者矢量）复制num_heads次，
+            # 然后如此复制第二项，然后诸如此类。
+            valid_lens = torch.repeat_interleave(
+                valid_lens, repeats=self.num_heads, dim=0)
+
+        # output的形状:(batch_size*num_heads，查询的个数，
+        # num_hiddens/num_heads)
+        output = self.attention(queries, keys, values, valid_lens)
+
+        # output_concat的形状:(batch_size，查询的个数，num_hiddens)
+        output_concat = transpose_output(output, self.num_heads)
+        return self.W_o(output_concat)
 
 class DotProductAttention(nn.Module):
     """缩放点积注意力
-
-    Defined in :numref:`subsec_additive-attention`"""
+    """
     def __init__(self, dropout, **kwargs):
         super(DotProductAttention, self).__init__(**kwargs)
         self.dropout = nn.Dropout(dropout)
@@ -140,9 +237,8 @@ class DotProductAttention(nn.Module):
         self.attention_weights = masked_softmax(scores, valid_lens)
         return torch.bmm(self.dropout(self.attention_weights), values)
 
-class MultiHeadAttention(nn.Module):
+class MultiHeadExternalMixAttention(nn.Module):
     """多头注意力
-        TO DO: the query_size should be able to be matrix
     """
     def __init__(self, key_size, query_size, value_size, num_hiddens,
                  num_heads, dropout, bias=False, **kwargs):
@@ -182,45 +278,14 @@ class MultiHeadAttention(nn.Module):
         output_concat = transpose_output(output, self.num_heads)
         return self.W_o(output_concat)
     
-class PositionWiseFFN(nn.Module):
-    """基于位置的前馈网络, change the last dimension"""
-    def __init__(self, ffn_num_input, ffn_num_hiddens, ffn_num_outputs,
-                 **kwargs):
-        super(PositionWiseFFN, self).__init__(**kwargs)
-        self.dense1 = nn.Linear(ffn_num_input, ffn_num_hiddens)
-        self.relu = nn.ReLU()
-        self.dense2 = nn.Linear(ffn_num_hiddens, ffn_num_outputs)
-
-    def forward(self, X):
-        """ simply propagate forward """
-        return self.dense2(self.relu(self.dense1(X)))
-
-class AddNorm(nn.Module):
-    """残差连接后进行层规范化,
-    drop out, add and layer normalization"""
-    def __init__(self, normalized_shape, dropout, **kwargs):
-        super(AddNorm, self).__init__(**kwargs)
-        self.dropout = nn.Dropout(dropout)
-        self.ln = nn.LayerNorm(normalized_shape)
-
-    def forward(self, X, Y):
-        """ add """
-# =============================================================================
-#         print('X:',X)
-#         print('Y:',Y)
-#         print(self.dropout(Y))
-#         print(self.dropout(Y)+X)
-# =============================================================================
-        return self.ln(self.dropout(Y) + X)
-    
-
 class EncoderBlock(nn.Module):
     """transformer编码器块"""
     def __init__(self, key_size, query_size, value_size, num_hiddens,
                  norm_shape, ffn_num_input, ffn_num_hiddens, num_heads,
-                 dropout, use_bias=False, **kwargs):
+                 dropout, prot_MLP, use_bias=False, **kwargs):
         super(EncoderBlock, self).__init__(**kwargs)
-        self.attention = MultiHeadAttention(
+        
+        self.attention = MultiHeadExternalMixAttention(prot_MLP[-1],
             key_size, query_size, value_size, num_hiddens, num_heads, dropout,
             use_bias)
         self.addnorm1 = AddNorm(norm_shape, dropout)
@@ -232,15 +297,6 @@ class EncoderBlock(nn.Module):
         Y = self.addnorm1(X, self.attention(X, X, X, valid_lens))
         return self.addnorm2(Y, self.ffn(Y))
 
-
-class Encoder(nn.Module):
-    """编码器-解码器架构的基本编码器接口"""
-    def __init__(self, **kwargs):
-        super(Encoder, self).__init__(**kwargs)
-
-    def forward(self, X, *args):
-        raise NotImplementedError
-
 class ProteinEncoding(nn.Module):
     """
     protein encoding block.
@@ -248,58 +304,46 @@ class ProteinEncoding(nn.Module):
     model (size is len(prot) * 30), and the SMILES feature vector (size is len(vocab) * 1).
     The output of this block is protein and SMILES interaction matrix (size is len(vocab) * 1).
     """
-    def __init__(self, num_hiddens, dropout, max_len=1000):
-        super(PositionalEncoding, self).__init__()
+    def __init__(self, prot_MLP, dropout, **kwargs):
+        super(ProteinEncoding, self).__init__(**kwargs)
+        self.dense1 = nn.Linear(30, prot_MLP[0])
+        self.relu1 = nn.ReLU()
+        self.dense2 = nn.Linear(prot_MLP[0], prot_MLP[1])
+        self.relu2 = nn.ReLU()
+        self.dense3 = nn.Linear(prot_MLP[1], prot_MLP[2])
+        self.relu3 = nn.ReLU()
+        self.dense4 = nn.Linear(prot_MLP[2], prot_MLP[3])
+        self.ln = nn.LayerNorm( prot_MLP[3])
         self.dropout = nn.Dropout(dropout)
-        # 创建一个足够长的P
-        self.P = torch.zeros((1, max_len, num_hiddens))
-        X = torch.arange(max_len, dtype=torch.float32).reshape(
-            -1, 1) / torch.pow(10000, torch.arange(
-            0, num_hiddens, 2, dtype=torch.float32) / num_hiddens)
-        self.P[:, :, 0::2] = torch.sin(X)
-        self.P[:, :, 1::2] = torch.cos(X)
-
     def forward(self, X):
-        X = X + self.P[:, :X.shape[1], :].to(X.device)
-        return self.dropout(X)
+        """ 
+        add the protein features to feature's dimension (30 in PALACE), then propagate
+        to MLP.
+        """
+        X = torch.stack([torch.tensor(x).sum(dim=0) for x in X])
+        return self.ln(self.dropout(self.dense4(self.relu3(self.dense3(self.relu2(self.dense2(self.relu1(self.dense1(X)))))))))
 
-class PositionalEncoding(nn.Module):
-    """位置编码
-    """
-    def __init__(self, num_hiddens, dropout, max_len=1000):
-        super(PositionalEncoding, self).__init__()
-        self.dropout = nn.Dropout(dropout)
-        # 创建一个足够长的P
-        self.P = torch.zeros((1, max_len, num_hiddens))
-        X = torch.arange(max_len, dtype=torch.float32).reshape(
-            -1, 1) / torch.pow(10000, torch.arange(
-            0, num_hiddens, 2, dtype=torch.float32) / num_hiddens)
-        self.P[:, :, 0::2] = torch.sin(X)
-        self.P[:, :, 1::2] = torch.cos(X)
-
-    def forward(self, X):
-        X = X + self.P[:, :X.shape[1], :].to(X.device)
-        return self.dropout(X)
-
-class TransformerEncoder(Encoder):
+class PALACE_Encoder(Encoder):
     """transformer编码器"""
     def __init__(self, vocab_size, key_size, query_size, value_size,
                  num_hiddens, norm_shape, ffn_num_input, ffn_num_hiddens,
-                 num_heads, num_layers, dropout, use_bias=False, **kwargs):
-        super(TransformerEncoder, self).__init__(**kwargs)
+                 num_heads, num_layers, dropout, prot_MLP,
+                 use_bias=False, **kwargs):
+        super(PALACE_Encoder, self).__init__(**kwargs)
         self.num_hiddens = num_hiddens
         self.embedding = nn.Embedding(vocab_size, num_hiddens)
         self.pos_encoding = PositionalEncoding(num_hiddens, dropout)
-        
+
         # here implement ProteinEncoding
-        self.prot_encoding = ProteinEncoding(num_hiddens, dropout)
+        self.prot_encoding = ProteinEncoding(prot_MLP, dropout)
         
+        # encoder block
         self.blks = nn.Sequential()
         for i in range(num_layers):
             self.blks.add_module("block"+str(i),
-                EncoderBlock(key_size, query_size, value_size, num_hiddens,
+                EncoderBlock(prot_MLP,key_size, query_size, value_size, num_hiddens,
                              norm_shape, ffn_num_input, ffn_num_hiddens,
-                             num_heads, dropout, use_bias))
+                             num_heads, dropout, prot_MLP, use_bias))
 
     def forward(self, X, valid_lens, *args):
         # 因为位置编码值在-1和1之间，
@@ -366,8 +410,7 @@ class DecoderBlock(nn.Module):
 
 class Decoder(nn.Module):
     """编码器-解码器架构的基本解码器接口
-
-    Defined in :numref:`sec_encoder-decoder`"""
+    """
     def __init__(self, **kwargs):
         super(Decoder, self).__init__(**kwargs)
 
@@ -379,8 +422,7 @@ class Decoder(nn.Module):
 
 class AttentionDecoder(Decoder):
     """带有注意力机制解码器的基本接口
-
-    Defined in :numref:`sec_seq2seq_attention`"""
+    """
     def __init__(self, **kwargs):
         super(AttentionDecoder, self).__init__(**kwargs)
 
@@ -388,11 +430,11 @@ class AttentionDecoder(Decoder):
     def attention_weights(self):
         raise NotImplementedError
 
-class TransformerDecoder(AttentionDecoder):
+class PALACE_Decoder(AttentionDecoder):
     def __init__(self, vocab_size, key_size, query_size, value_size,
                  num_hiddens, norm_shape, ffn_num_input, ffn_num_hiddens,
                  num_heads, num_layers, dropout, **kwargs):
-        super(TransformerDecoder, self).__init__(**kwargs)
+        super(PALACE_Decoder, self).__init__(**kwargs)
         self.num_hiddens = num_hiddens
         self.num_layers = num_layers
         self.embedding = nn.Embedding(vocab_size, num_hiddens)
@@ -443,6 +485,19 @@ class EncoderDecoder(nn.Module):
         dec_state = self.decoder.init_state(enc_outputs, *args)
         return self.decoder(dec_X, dec_state)
 
+class PALACE(nn.Module):
+    """编码器-解码器架构的基类
+    """
+    def __init__(self, encoder, decoder, **kwargs):
+        super(EncoderDecoder, self).__init__(**kwargs)
+        self.encoder = encoder
+        self.decoder = decoder
+
+    def forward(self, enc_X, dec_X, *args):
+        enc_outputs = self.encoder(enc_X, *args)
+        dec_state = self.decoder.init_state(enc_outputs, *args)
+        return self.decoder(dec_X, dec_state)
+    
 # ===============================Multi-GPUs====================================
 #%% Multi-GPUs
 def try_gpu(i=0):
@@ -533,11 +588,11 @@ class Vocab:
         return self._token_freqs
 
 
-def load_array(data_arrays, batch_size, is_train=True):
+def load_array(data_arrays, batch_size):
     """构造一个PyTorch数据迭代器
     """
     dataset = data.TensorDataset(*data_arrays)
-    return data.DataLoader(dataset, batch_size, shuffle=is_train)
+    return data.DataLoader(dataset, batch_size, shuffle=True, drop_last = False)
 
 
 def read_data_nmt():
@@ -580,18 +635,23 @@ def preprocess_nmt(text):
            for i, char in enumerate(text)]
     return ''.join(out)
 
-def read_data(data_dir,src_col = 3, tgt_col = 4, sep = '\t'):
+def read_data(data_dir, trained_model_dir = None, prot_col = 2, src_col = 3, tgt_col = 4, sep = '\t'):
     """
     read txt file, return list of split tokens (one line one sublist), like:
         [[t1,t2],[t3,t4],...] # t1,t2 are in the same line
     """
+    prot = []
     source = []
     target = []
     with open(data_dir,'r') as r:
         for line in r:
             line_split = line.strip().split(sep)
+            prot.append(line_split[prot_col])
             source.append(line_split[src_col].split(' '))
             target.append(line_split[tgt_col].split(' '))
+    if trained_model_dir:
+        prot_features = prot_to_features(prot, trained_model_dir)
+        return prot_features, source, target
     return source, target
 
 def save_vocab(vocab,vocab_dir):
@@ -609,13 +669,16 @@ def retrieve_vocab(vocab_dir):
         return pickle.load(r)
 
 #def load_data_nmt(batch_size, num_steps, num_examples=600):
-def load_data_nmt(data_dir,batch_size, num_steps,vocab_dir = None):
+def load_data_nmt(data_dir,batch_size, num_steps,vocab_dir = None, trained_model_dir = None):
     """返回翻译数据集的迭代器和词表
         vocab_dir: [src_vocab,tgt_vocab]
     """
     #text = preprocess_nmt(read_data_nmt())
     #source, target = tokenize_nmt(text, num_examples)
-    source, target = read_data(data_dir)
+    if trained_model_dir:
+        prot_features, source, target = read_data(data_dir, trained_model_dir)
+    else:
+        source, target = read_data(data_dir, trained_model_dir)
     
     if vocab_dir:
         assert type(vocab_dir) == list
@@ -631,10 +694,55 @@ def load_data_nmt(data_dir,batch_size, num_steps,vocab_dir = None):
     
     src_array, src_valid_len = build_array_nmt(source, src_vocab, num_steps)
     tgt_array, tgt_valid_len = build_array_nmt(target, tgt_vocab, num_steps)
-    data_arrays = (src_array, src_valid_len, tgt_array, tgt_valid_len)
+    if trained_model_dir:
+        data_arrays = (prot_features, src_array, src_valid_len, tgt_array, tgt_valid_len)
+    else:
+        data_arrays = (src_array, src_valid_len, tgt_array, tgt_valid_len)
     data_iter = load_array(data_arrays, batch_size)
+    
     return data_iter, src_vocab, tgt_vocab
 
+def prot_to_features(prot : list, trained_model_dir: str, device: str):
+    """
+    call pre-trained BERT to generate prot features
+    input: [prot1,prot2,prot3...] # list
+    output: [(len(prot1),30),(len(prot2),30)...] # list of 2D matrix
+    """
+    assert os.path.exists(trained_model_dir) == True
+    # get model
+    model = BertForMaskedLM.from_pretrained(trained_model_dir)
+    tokenizer = BertTokenizer.from_pretrained(trained_model_dir)
+    
+    # model to GPU
+    model = model.to(device)
+    model.eval()
+    
+    # tokenize prot
+    # aa is amino acid
+    # replace unknown aa to X and inter-fill with space
+    prot_tok = [' '.join([re.sub(r"[UZOB]", "X", aa) for aa in list(seq)]) for seq in prot]
+    
+    # Tokenize, encode sequences and load it into the GPU if possibile
+    ids = tokenizer.batch_encode_plus(prot_tok, add_special_tokens=True, padding=True)
+    input_ids = torch.tensor(ids['input_ids']).to(device)
+    attention_mask = torch.tensor(ids['attention_mask']).to(device)
+    
+    # Extracting sequences' features and load it into the CPU if needed
+    with torch.no_grad():
+        embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
+    # Remove padding ([PAD]) and special tokens ([CLS],[SEP])
+    # that is added by ProtBert-BFD model
+    prot_features = [] 
+    for seq_num in range(len(embedding)):
+        # remove padding
+        seq_len = (attention_mask[seq_num] == 1).sum()
+        # remove special tokens
+        seq_emd = embedding[seq_num][1:seq_len-1]
+        prot_features.append(seq_emd)
+    
+    print("prot_to_features:\ninput shape:{}\noutput_shape:{} * {}".\
+          format(len(prot),len(prot_features),prot_features[0].shape))
+    return prot_features
 # =================================Utils=======================================
 #%% Utils
 class Accumulator:
@@ -731,6 +839,51 @@ def train_seq2seq(net, data_iter, lr, num_epochs, tgt_vocab, device):
     print(f'loss {metric[0] / metric[1]:.3f}, {metric[1] / timer.stop():.1f} '
         f'tokens/sec on {str(device)}')
 
+def train_PALACE(net, data_iter, lr, num_epochs, tgt_vocab, device,
+                 trained_model_dir=None):
+    """训练序列到序列模型
+    """
+    def xavier_init_weights(m):
+        if type(m) == nn.Linear:
+            nn.init.xavier_uniform_(m.weight)
+        if type(m) == nn.GRU:
+            for param in m._flat_weights_names:
+                if "weight" in param:
+                    nn.init.xavier_uniform_(m._parameters[param])
+
+    net.apply(xavier_init_weights)
+    net.to(device)
+    optimizer = torch.optim.Adam(net.parameters(), lr=lr)
+    loss = MaskedSoftmaxCELoss()
+    net.train()
+    animator = d2l.Animator(xlabel='epoch', ylabel='loss',
+                     xlim=[10, num_epochs])
+    for epoch in range(num_epochs):
+        timer = Timer()
+        metric = Accumulator(2)  # 训练损失总和，词元数量
+        for batch in data_iter:
+            optimizer.zero_grad()
+            if trained_model_dir:
+                X_prot, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
+            else:
+                X_prot = None
+                X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
+            bos = torch.tensor([tgt_vocab['<bos>']] * Y.shape[0],
+                          device=device).reshape(-1, 1)
+            dec_input = torch.cat([bos, Y[:, :-1]], 1)  # 强制教学
+            Y_hat, _ = net(X_prot, X, dec_input, X_valid_len)
+            l = loss(Y_hat, Y, Y_valid_len)
+            l.sum().backward()	# 损失函数的标量进行“反向传播”
+            grad_clipping(net, 1)
+            num_tokens = Y_valid_len.sum()
+            optimizer.step()
+            with torch.no_grad():
+                metric.add(l.sum(), num_tokens)
+        if (epoch + 1) % 10 == 0:
+            animator.add(epoch + 1, (metric[0] / metric[1],))
+    print(f'loss {metric[0] / metric[1]:.3f}, {metric[1] / timer.stop():.1f} '
+        f'tokens/sec on {str(device)}')
+
 # num_steps: window size, 时间步, ref d2l 8.1 and 8.3
 # num_hiddens: also determines the output feature size of embeddings
 # um_layers: number of blocks (same for encoder and decoder)
@@ -741,6 +894,7 @@ lr, num_epochs, device = 0.005, 200, try_gpu()
 ffn_num_input, ffn_num_hiddens, num_heads = 32, 64, 4
 key_size, query_size, value_size = 32, 32, 32
 norm_shape = [32]
+prot_MLP = (128,128,256,512)
 
 data_dir = 'data/sample_test'
 first_train = True
@@ -753,17 +907,17 @@ else:
     train_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size, num_steps,vocab_dir)
 #train_iter, src_vocab, tgt_vocab = load_data_nmt(batch_size, num_steps)
 
-encoder = TransformerEncoder(
+
+encoder = PALACE_Encoder(
     len(src_vocab), key_size, query_size, value_size, num_hiddens,
     norm_shape, ffn_num_input, ffn_num_hiddens, num_heads,
-    num_layers, dropout)
-decoder = TransformerDecoder(
+    num_layers, dropout, prot_MLP)
+decoder = PALACE_Decoder(
     len(tgt_vocab), key_size, query_size, value_size, num_hiddens,
     norm_shape, ffn_num_input, ffn_num_hiddens, num_heads,
-    num_layers, dropout)
-net = EncoderDecoder(encoder, decoder)
+    num_layers, dropout, prot_MLP)
+net = PALACE(encoder,decoder)
 train_seq2seq(net, train_iter, lr, num_epochs, tgt_vocab, device)
-
 
 
 
