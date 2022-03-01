@@ -237,18 +237,46 @@ class DotProductAttention(nn.Module):
         self.attention_weights = masked_softmax(scores, valid_lens)
         return torch.bmm(self.dropout(self.attention_weights), values)
 
+class DotProductMixAttention(nn.Module):
+    """缩放点积注意力
+    queries and keys are matrix, while value is vector
+    """
+    def __init__(self, dropout, **kwargs):
+        super(DotProductMixAttention, self).__init__(**kwargs)
+        self.dropout = nn.Dropout(dropout)
+    # d is num_hiddens/num_heads
+    # queries的形状：(batch_size，查询的个数，d)
+    # keys的形状：(batch_size，“键－值”对的个数，d)
+    # values的形状：(batch_size，“键－值”对的个数，值的维度)
+    # valid_lens的形状:(batch_size，)或者(batch_size，查询的个数)
+    def forward(self, queris_matrix, keys_matrix, values, valid_lens=None):
+        assert queris_matrix.shape[-1] == queris_matrix.shape[-2],\
+                "queris matrix should be a square."
+        d = queris_matrix.shape[-1]
+        # 设置transpose_b=True为了交换keys的最后两个维度
+        scores = ((queris_matrix * keys_matrix) / d).sum(dim = 2).sum(dim = 2,keepdims = True)
+        self.attention_weights = masked_softmax(scores, valid_lens)
+        return torch.bmm(self.dropout(self.attention_weights), values)
+
 class MultiHeadExternalMixAttention(nn.Module):
-    """多头注意力
+    """
+    Multi-head attention with external input and internal input.
     """
     def __init__(self, key_size, query_size, value_size, num_hiddens,
                  num_heads, dropout, bias=False, **kwargs):
-        super(MultiHeadAttention, self).__init__(**kwargs)
+        super(MultiHeadExternalMixAttention, self).__init__(**kwargs)
+        assert num_hiddens % num_heads == 0,\
+        "num_hiddens (output dims of Attention block) should modulo 0 to num_heads"
         self.num_heads = num_heads
-        self.attention = DotProductAttention(dropout)
+        self.attention = DotProductMixAttention(dropout)
         # nn.Linear can accept N-D tensor
         # ref https://stackoverflow.com/questions/58587057/multi-dimensional-inputs-in-pytorch-linear-method
-        self.W_q = nn.Linear(query_size, num_hiddens, bias=bias)
-        self.W_k = nn.Linear(key_size, num_hiddens, bias=bias)
+        query_prot_size, query_smi_size = query_size
+        key_prot_size, key_smi_size = key_size
+        self.W_q_p = nn.Linear(query_prot_size, num_hiddens, bias=bias)
+        self.W_q_s = nn.Linear(query_smi_size, num_hiddens, bias=bias)
+        self.W_k_p = nn.Linear(key_prot_size, num_hiddens, bias=bias)
+        self.W_k_s = nn.Linear(key_smi_size, num_hiddens, bias=bias)
         self.W_v = nn.Linear(value_size, num_hiddens, bias=bias)
         self.W_o = nn.Linear(num_hiddens, num_hiddens, bias=bias)
 
@@ -258,21 +286,24 @@ class MultiHeadExternalMixAttention(nn.Module):
         # valid_lens　的形状:
         # (batch_size，)或(batch_size，查询的个数)
         # 经过变换后，输出的queries，keys，values　的形状:
-        # (batch_size*num_heads，查询或者“键－值”对的个数，
-        # num_hiddens/num_heads)
-        queries = transpose_qkv(self.W_q(queries), self.num_heads)
-        keys = transpose_qkv(self.W_k(keys), self.num_heads)
+        # (batch_size*num_heads，查询或者“键－值”对的个数, num_hiddens/num_heads)
+        query_prot, query_smi = queries
+        key_prot, key_smi = keys
+        queries_prot = transpose_qkv(self.W_q_p(query_prot), self.num_heads)
+        queries_smi = transpose_qkv(self.W_q_s(query_smi), self.num_heads)
+        keys_prot = transpose_qkv(self.W_k_p(key_prot), self.num_heads)
+        keys_smi = transpose_qkv(self.W_k_s(key_smi), self.num_heads)
         values = transpose_qkv(self.W_v(values), self.num_heads)
-
+        queris_matrix = queries_prot.reshape(-1,1) * queries_smi
+        keys_matrix = keys_prot.reshape(-1,1) * keys_smi
         if valid_lens is not None:
             # 在轴0，将第一项（标量或者矢量）复制num_heads次，
             # 然后如此复制第二项，然后诸如此类。
             valid_lens = torch.repeat_interleave(
                 valid_lens, repeats=self.num_heads, dim=0)
 
-        # output的形状:(batch_size*num_heads，查询的个数，
-        # num_hiddens/num_heads)
-        output = self.attention(queries, keys, values, valid_lens)
+        # output的形状:(batch_size*num_heads，查询的个数，num_hiddens/num_heads)
+        output = self.attention(queris_matrix, keys_matrix, values, valid_lens)
 
         # output_concat的形状:(batch_size，查询的个数，num_hiddens)
         output_concat = transpose_output(output, self.num_heads)
@@ -285,7 +316,7 @@ class EncoderBlock(nn.Module):
                  dropout, prot_MLP, use_bias=False, **kwargs):
         super(EncoderBlock, self).__init__(**kwargs)
         
-        self.attention = MultiHeadExternalMixAttention(prot_MLP[-1],
+        self.attention = MultiHeadExternalMixAttention(
             key_size, query_size, value_size, num_hiddens, num_heads, dropout,
             use_bias)
         self.addnorm1 = AddNorm(norm_shape, dropout)
@@ -294,7 +325,8 @@ class EncoderBlock(nn.Module):
         self.addnorm2 = AddNorm(norm_shape, dropout)
 
     def forward(self, X, valid_lens):
-        Y = self.addnorm1(X, self.attention(X, X, X, valid_lens))
+        _, X_smi = X
+        Y = self.addnorm1(X_smi, self.attention(X, X, X_smi, valid_lens))
         return self.addnorm2(Y, self.ffn(Y))
 
 class ProteinEncoding(nn.Module):
@@ -306,22 +338,24 @@ class ProteinEncoding(nn.Module):
     """
     def __init__(self, prot_MLP, dropout, **kwargs):
         super(ProteinEncoding, self).__init__(**kwargs)
-        self.dense1 = nn.Linear(30, prot_MLP[0])
+        self.dense1 = nn.Linear(30, 32)
         self.relu1 = nn.ReLU()
-        self.dense2 = nn.Linear(prot_MLP[0], prot_MLP[1])
+        self.dense2 = nn.Linear(32,64)
         self.relu2 = nn.ReLU()
-        self.dense3 = nn.Linear(prot_MLP[1], prot_MLP[2])
+        self.dense3 = nn.Linear(64, 64)
         self.relu3 = nn.ReLU()
-        self.dense4 = nn.Linear(prot_MLP[2], prot_MLP[3])
-        self.ln = nn.LayerNorm( prot_MLP[3])
+        self.dense4 = nn.Linear(64, 128)
+        self.ln = nn.LayerNorm(128)
         self.dropout = nn.Dropout(dropout)
     def forward(self, X):
         """ 
         add the protein features to feature's dimension (30 in PALACE), then propagate
         to MLP.
         """
+        if X is None: return X
         X = torch.stack([torch.tensor(x).sum(dim=0) for x in X])
-        return self.ln(self.dropout(self.dense4(self.relu3(self.dense3(self.relu2(self.dense2(self.relu1(self.dense1(X)))))))))
+        return self.ln(self.dropout(self.dense4(self.relu3(self.dense3(\
+               self.relu2(self.dense2(self.relu1(self.dense1(X)))))))))
 
 class PALACE_Encoder(Encoder):
     """transformer编码器"""
@@ -335,13 +369,16 @@ class PALACE_Encoder(Encoder):
         self.pos_encoding = PositionalEncoding(num_hiddens, dropout)
 
         # here implement ProteinEncoding
+        #print("PALACE_Encoder: ",prot_MLP)
         self.prot_encoding = ProteinEncoding(prot_MLP, dropout)
         
         # encoder block
         self.blks = nn.Sequential()
+        key_size = (prot_MLP[-1],key_size)
+        query_size = (prot_MLP[-1],query_size)
         for i in range(num_layers):
             self.blks.add_module("block"+str(i),
-                EncoderBlock(prot_MLP,key_size, query_size, value_size, num_hiddens,
+                EncoderBlock(key_size, query_size, value_size, num_hiddens,
                              norm_shape, ffn_num_input, ffn_num_hiddens,
                              num_heads, dropout, prot_MLP, use_bias))
 
@@ -349,14 +386,15 @@ class PALACE_Encoder(Encoder):
         # 因为位置编码值在-1和1之间，
         # 因此嵌入值乘以嵌入维度的平方根进行缩放，
         # 然后再与位置编码相加。
-        X = self.pos_encoding(self.embedding(X) * math.sqrt(self.num_hiddens))
+        X_prot, X_smi = X
+        X_smi = self.pos_encoding(self.embedding(X_smi) * math.sqrt(self.num_hiddens))
         
         # pass to prot_encoding
-        X = self.prot_encoding(X)
+        X_prot = self.prot_encoding(X_prot)
         
         self.attention_weights = [None] * len(self.blks)
         for i, blk in enumerate(self.blks):
-            X = blk(X, valid_lens)
+            X = blk((X_prot,X_smi), valid_lens)
             self.attention_weights[i] = blk.attention.attention.attention_weights
         return X
 
@@ -489,7 +527,7 @@ class PALACE(nn.Module):
     """编码器-解码器架构的基类
     """
     def __init__(self, encoder, decoder, **kwargs):
-        super(EncoderDecoder, self).__init__(**kwargs)
+        super(PALACE, self).__init__(**kwargs)
         self.encoder = encoder
         self.decoder = decoder
 
@@ -635,7 +673,7 @@ def preprocess_nmt(text):
            for i, char in enumerate(text)]
     return ''.join(out)
 
-def read_data(data_dir, trained_model_dir = None, prot_col = 2, src_col = 3, tgt_col = 4, sep = '\t'):
+def read_data(data_dir, device, trained_model_dir = None, prot_col = 2, src_col = 3, tgt_col = 4, sep = '\t'):
     """
     read txt file, return list of split tokens (one line one sublist), like:
         [[t1,t2],[t3,t4],...] # t1,t2 are in the same line
@@ -650,7 +688,7 @@ def read_data(data_dir, trained_model_dir = None, prot_col = 2, src_col = 3, tgt
             source.append(line_split[src_col].split(' '))
             target.append(line_split[tgt_col].split(' '))
     if trained_model_dir:
-        prot_features = prot_to_features(prot, trained_model_dir)
+        prot_features = prot_to_features(prot, trained_model_dir, device)
         return prot_features, source, target
     return source, target
 
@@ -669,16 +707,16 @@ def retrieve_vocab(vocab_dir):
         return pickle.load(r)
 
 #def load_data_nmt(batch_size, num_steps, num_examples=600):
-def load_data_nmt(data_dir,batch_size, num_steps,vocab_dir = None, trained_model_dir = None):
+def load_data_nmt(data_dir,batch_size, num_steps, device, vocab_dir = None, trained_model_dir = None):
     """返回翻译数据集的迭代器和词表
         vocab_dir: [src_vocab,tgt_vocab]
     """
     #text = preprocess_nmt(read_data_nmt())
     #source, target = tokenize_nmt(text, num_examples)
     if trained_model_dir:
-        prot_features, source, target = read_data(data_dir, trained_model_dir)
+        prot_features, source, target = read_data(data_dir, device, trained_model_dir)
     else:
-        source, target = read_data(data_dir, trained_model_dir)
+        source, target = read_data(data_dir, device, trained_model_dir)
     
     if vocab_dir:
         assert type(vocab_dir) == list
@@ -698,6 +736,7 @@ def load_data_nmt(data_dir,batch_size, num_steps,vocab_dir = None, trained_model
         data_arrays = (prot_features, src_array, src_valid_len, tgt_array, tgt_valid_len)
     else:
         data_arrays = (src_array, src_valid_len, tgt_array, tgt_valid_len)
+    print("load_data_nmt:",trained_model_dir)
     data_iter = load_array(data_arrays, batch_size)
     
     return data_iter, src_vocab, tgt_vocab
@@ -861,17 +900,14 @@ def train_PALACE(net, data_iter, lr, num_epochs, tgt_vocab, device,
     for epoch in range(num_epochs):
         timer = Timer()
         metric = Accumulator(2)  # 训练损失总和，词元数量
+        assert trained_model_dir is not None, "trained model is not available."
         for batch in data_iter:
             optimizer.zero_grad()
-            if trained_model_dir:
-                X_prot, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
-            else:
-                X_prot = None
-                X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
+            X_prot, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
             bos = torch.tensor([tgt_vocab['<bos>']] * Y.shape[0],
                           device=device).reshape(-1, 1)
             dec_input = torch.cat([bos, Y[:, :-1]], 1)  # 强制教学
-            Y_hat, _ = net(X_prot, X, dec_input, X_valid_len)
+            Y_hat, _ = net((X_prot, X), dec_input, X_valid_len)
             l = loss(Y_hat, Y, Y_valid_len)
             l.sum().backward()	# 损失函数的标量进行“反向传播”
             grad_clipping(net, 1)
@@ -889,22 +925,25 @@ def train_PALACE(net, data_iter, lr, num_epochs, tgt_vocab, device,
 # um_layers: number of blocks (same for encoder and decoder)
 
 
-num_hiddens, num_layers, dropout, batch_size, num_steps = 256, 2, 0.1, 64, 10
+num_hiddens, num_layers, dropout, batch_size, num_steps = 100, 2, 0.1, 64, 10
 lr, num_epochs, device = 0.005, 200, try_gpu()
 ffn_num_input, ffn_num_hiddens, num_heads = 32, 64, 4
 key_size, query_size, value_size = 32, 32, 32
 norm_shape = [32]
-prot_MLP = (128,128,256,512)
+prot_MLP = [32,64,64,128]
 
 data_dir = 'data/sample_test'
+trained_model_dir = 'trained_models/'
 first_train = True
 # data 分成300份训练。但是要保证vocab一样。能存储vocab，能加载vocab
 if first_train:
-    train_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size, num_steps)
+    train_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size,
+                     num_steps, device, trained_model_dir = trained_model_dir)
 else:
     # if not first train, will use former vocab
     vocab_dir = ['PALACE/src_vocab.pkl','PALACE/tgt_vocab.pkl']
-    train_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size, num_steps,vocab_dir)
+    train_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size,
+                             num_steps, device, vocab_dir,trained_model_dir)
 #train_iter, src_vocab, tgt_vocab = load_data_nmt(batch_size, num_steps)
 
 
@@ -915,10 +954,10 @@ encoder = PALACE_Encoder(
 decoder = PALACE_Decoder(
     len(tgt_vocab), key_size, query_size, value_size, num_hiddens,
     norm_shape, ffn_num_input, ffn_num_hiddens, num_heads,
-    num_layers, dropout, prot_MLP)
+    num_layers, dropout)
 net = PALACE(encoder,decoder)
-train_seq2seq(net, train_iter, lr, num_epochs, tgt_vocab, device)
-
+train_PALACE(net, train_iter, lr, num_epochs, tgt_vocab, device, trained_model_dir)
+torch.cuda.empty_cache()
 
 
 
