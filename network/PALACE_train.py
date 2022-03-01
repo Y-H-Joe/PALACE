@@ -34,6 +34,7 @@ from torch import nn
 from torch.utils import data
 from d2l import torch as d2l
 from transformers import BertForMaskedLM, BertTokenizer
+import sys
 seed = 3434
 
 # ==============================Model building=================================
@@ -144,12 +145,6 @@ class AddNorm(nn.Module):
 
     def forward(self, X, Y):
         """ add """
-# =============================================================================
-#         print('X:',X)
-#         print('Y:',Y)
-#         print(self.dropout(Y))
-#         print(self.dropout(Y)+X)
-# =============================================================================
         return self.ln(self.dropout(Y) + X)
 
 class Encoder(nn.Module):
@@ -289,8 +284,13 @@ class MultiHeadExternalMixAttention(nn.Module):
         # (batch_size*num_heads，查询或者“键－值”对的个数, num_hiddens/num_heads)
         query_prot, query_smi = queries
         key_prot, key_smi = keys
-        queries_prot = transpose_qkv(self.W_q_p(query_prot), self.num_heads)
-        queries_smi = transpose_qkv(self.W_q_s(query_smi), self.num_heads)
+        try:
+            queries_prot = transpose_qkv(self.W_q_p(query_prot), self.num_heads)
+        except:
+            print("query_prot:",query_prot.shape)
+            print("query_smi:",query_smi.shape)
+            sys.exit()
+            queries_smi = transpose_qkv(self.W_q_s(query_smi), self.num_heads)
         keys_prot = transpose_qkv(self.W_k_p(key_prot), self.num_heads)
         keys_smi = transpose_qkv(self.W_k_s(key_smi), self.num_heads)
         values = transpose_qkv(self.W_v(values), self.num_heads)
@@ -353,7 +353,7 @@ class ProteinEncoding(nn.Module):
         to MLP.
         """
         if X is None: return X
-        X = torch.stack([torch.tensor(x).sum(dim=0) for x in X])
+        # X = torch.stack([torch.tensor(x).sum(dim=0) for x in X]) # this has been done in prot_to_features
         return self.ln(self.dropout(self.dense4(self.relu3(self.dense3(\
                self.relu2(self.dense2(self.relu1(self.dense1(X)))))))))
 
@@ -369,7 +369,6 @@ class PALACE_Encoder(Encoder):
         self.pos_encoding = PositionalEncoding(num_hiddens, dropout)
 
         # here implement ProteinEncoding
-        #print("PALACE_Encoder: ",prot_MLP)
         self.prot_encoding = ProteinEncoding(prot_MLP, dropout)
         
         # encoder block
@@ -673,7 +672,7 @@ def preprocess_nmt(text):
            for i, char in enumerate(text)]
     return ''.join(out)
 
-def read_data(data_dir, device, trained_model_dir = None, prot_col = 2, src_col = 3, tgt_col = 4, sep = '\t'):
+def read_data(data_dir, device, batch_size, trained_model_dir = None, prot_col = 2, src_col = 3, tgt_col = 4, sep = '\t'):
     """
     read txt file, return list of split tokens (one line one sublist), like:
         [[t1,t2],[t3,t4],...] # t1,t2 are in the same line
@@ -688,7 +687,7 @@ def read_data(data_dir, device, trained_model_dir = None, prot_col = 2, src_col 
             source.append(line_split[src_col].split(' '))
             target.append(line_split[tgt_col].split(' '))
     if trained_model_dir:
-        prot_features = prot_to_features(prot, trained_model_dir, device)
+        prot_features = prot_to_features(prot, trained_model_dir, device, batch_size)
         return prot_features, source, target
     return source, target
 
@@ -714,7 +713,7 @@ def load_data_nmt(data_dir,batch_size, num_steps, device, vocab_dir = None, trai
     #text = preprocess_nmt(read_data_nmt())
     #source, target = tokenize_nmt(text, num_examples)
     if trained_model_dir:
-        prot_features, source, target = read_data(data_dir, device, trained_model_dir)
+        prot_features, source, target = read_data(data_dir, device, batch_size, trained_model_dir)
     else:
         source, target = read_data(data_dir, device, trained_model_dir)
     
@@ -736,12 +735,11 @@ def load_data_nmt(data_dir,batch_size, num_steps, device, vocab_dir = None, trai
         data_arrays = (prot_features, src_array, src_valid_len, tgt_array, tgt_valid_len)
     else:
         data_arrays = (src_array, src_valid_len, tgt_array, tgt_valid_len)
-    print("load_data_nmt:",trained_model_dir)
     data_iter = load_array(data_arrays, batch_size)
     
     return data_iter, src_vocab, tgt_vocab
 
-def prot_to_features(prot : list, trained_model_dir: str, device: str):
+def prot_to_features(prot : list, trained_model_dir: str, device: str, batch_size: int):
     """
     call pre-trained BERT to generate prot features
     input: [prot1,prot2,prot3...] # list
@@ -760,28 +758,35 @@ def prot_to_features(prot : list, trained_model_dir: str, device: str):
     # aa is amino acid
     # replace unknown aa to X and inter-fill with space
     prot_tok = [' '.join([re.sub(r"[UZOB]", "X", aa) for aa in list(seq)]) for seq in prot]
-    
-    # Tokenize, encode sequences and load it into the GPU if possibile
-    ids = tokenizer.batch_encode_plus(prot_tok, add_special_tokens=True, padding=True)
-    input_ids = torch.tensor(ids['input_ids']).to(device)
-    attention_mask = torch.tensor(ids['attention_mask']).to(device)
-    
-    # Extracting sequences' features and load it into the CPU if needed
-    with torch.no_grad():
-        embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
-    # Remove padding ([PAD]) and special tokens ([CLS],[SEP])
-    # that is added by ProtBert-BFD model
+    prot_tok_list = \
+    [prot_tok[i:i+batch_size] for i in range(0, len(prot_tok), batch_size)]
     prot_features = [] 
-    for seq_num in range(len(embedding)):
-        # remove padding
-        seq_len = (attention_mask[seq_num] == 1).sum()
-        # remove special tokens
-        seq_emd = embedding[seq_num][1:seq_len-1]
-        prot_features.append(seq_emd)
+    with torch.no_grad():
+        for batch in prot_tok_list:
+            # Tokenize, encode sequences and load it into the GPU if possibile
+            ids = tokenizer.batch_encode_plus(batch, add_special_tokens=True, padding=True)
+            input_ids = torch.tensor(ids['input_ids']).to(device)
+            attention_mask = torch.tensor(ids['attention_mask']).to(device)
+            # reshape into batch
+            seq_num,seq_len = input_ids.shape
+            try:
+                embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
+            except:
+                print("input_ids.shape:",input_ids.shape)
+                import sys
+                sys.exit()
+            # Remove padding ([PAD]) and special tokens ([CLS],[SEP])
+            # that is added by ProtBert-BFD model
+            for seq_num in range(len(embedding)):
+                # remove padding
+                seq_len = (attention_mask[seq_num] == 1).sum()
+                # remove special tokens
+                seq_emd = embedding[seq_num][1:seq_len-1]
+                prot_features.append(seq_emd)
+    prot_features = torch.stack([torch.tensor(x).sum(dim=0) for x in prot_features])
     
-    print("prot_to_features:\ninput shape:{}\noutput_shape:{} * {}".\
-          format(len(prot),len(prot_features),prot_features[0].shape))
     return prot_features
+
 # =================================Utils=======================================
 #%% Utils
 class Accumulator:
@@ -925,17 +930,18 @@ def train_PALACE(net, data_iter, lr, num_epochs, tgt_vocab, device,
 # um_layers: number of blocks (same for encoder and decoder)
 
 
-num_hiddens, num_layers, dropout, batch_size, num_steps = 100, 2, 0.1, 64, 10
-lr, num_epochs, device = 0.005, 200, try_gpu()
+num_hiddens, num_layers, dropout, batch_size, num_steps = 100, 2, 0.1, 2, 10
+lr, num_epochs, device = 0.005, 1, try_gpu()
 ffn_num_input, ffn_num_hiddens, num_heads = 32, 64, 4
 key_size, query_size, value_size = 32, 32, 32
 norm_shape = [32]
 prot_MLP = [32,64,64,128]
 
-data_dir = 'data/sample_test'
+data_dir = 'data/sample_sample.txt'
 trained_model_dir = 'trained_models/'
 first_train = True
 # data 分成300份训练。但是要保证vocab一样。能存储vocab，能加载vocab
+print("PALACE: loading data...")
 if first_train:
     train_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size,
                      num_steps, device, trained_model_dir = trained_model_dir)
@@ -946,18 +952,20 @@ else:
                              num_steps, device, vocab_dir,trained_model_dir)
 #train_iter, src_vocab, tgt_vocab = load_data_nmt(batch_size, num_steps)
 
-
+print("PALACE: building encoder...")
 encoder = PALACE_Encoder(
     len(src_vocab), key_size, query_size, value_size, num_hiddens,
     norm_shape, ffn_num_input, ffn_num_hiddens, num_heads,
     num_layers, dropout, prot_MLP)
+print("PALACE: building decoder...")
 decoder = PALACE_Decoder(
     len(tgt_vocab), key_size, query_size, value_size, num_hiddens,
     norm_shape, ffn_num_input, ffn_num_hiddens, num_heads,
     num_layers, dropout)
 net = PALACE(encoder,decoder)
+print("PALACE: training...")
 train_PALACE(net, train_iter, lr, num_epochs, tgt_vocab, device, trained_model_dir)
-torch.cuda.empty_cache()
+#torch.cuda.empty_cache()
 
 
 
