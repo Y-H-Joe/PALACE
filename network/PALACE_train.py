@@ -34,8 +34,11 @@ from torch import nn
 from torch.utils import data
 from d2l import torch as d2l
 from transformers import BertForMaskedLM, BertTokenizer
+from transformers import logging
 import sys
+
 seed = 3434
+logging.set_verbosity_error() # will not print warning
 
 # ==============================Model building=================================
 #%% Model building
@@ -101,16 +104,13 @@ def transpose_qkv(X, num_heads):
     """为了多注意力头的并行计算而变换形状
     """
     # 输入X的形状:(batch_size，查询或者“键－值”对的个数，num_hiddens)
-    # 输出X的形状:(batch_size，查询或者“键－值”对的个数，num_heads，
-    # num_hiddens/num_heads)
+    # 输出X的形状:(batch_size，查询或者“键－值”对的个数，num_heads，num_hiddens/num_heads)
     X = X.reshape(X.shape[0], X.shape[1], num_heads, -1)
 
-    # 输出X的形状:(batch_size，num_heads，查询或者“键－值”对的个数,
-    # num_hiddens/num_heads)
+    # 输出X的形状:(batch_size，num_heads，查询或者“键－值”对的个数,num_hiddens/num_heads)
     X = X.permute(0, 2, 1, 3)
 
-    # 最终输出的形状:(batch_size*num_heads,查询或者“键－值”对的个数,
-    # num_hiddens/num_heads)
+    # 最终输出的形状:(batch_size*num_heads,查询或者“键－值”对的个数,num_hiddens/num_heads)
     return X.reshape(-1, X.shape[2], X.shape[3])
 
 def transpose_output(X, num_heads):
@@ -269,6 +269,7 @@ class MultiHeadExternalMixAttention(nn.Module):
         query_prot_size, query_smi_size = query_size
         key_prot_size, key_smi_size = key_size
         self.W_q_p = nn.Linear(query_prot_size, num_hiddens, bias=bias)
+        print("MultiHeadExternalMixAttention query_smi_size:",query_smi_size) #########################################
         self.W_q_s = nn.Linear(query_smi_size, num_hiddens, bias=bias)
         self.W_k_p = nn.Linear(key_prot_size, num_hiddens, bias=bias)
         self.W_k_s = nn.Linear(key_smi_size, num_hiddens, bias=bias)
@@ -284,14 +285,11 @@ class MultiHeadExternalMixAttention(nn.Module):
         # (batch_size*num_heads，查询或者“键－值”对的个数, num_hiddens/num_heads)
         query_prot, query_smi = queries
         key_prot, key_smi = keys
-        try:
-            queries_prot = transpose_qkv(self.W_q_p(query_prot), self.num_heads)
-        except:
-            print("query_prot:",query_prot.shape)
-            print("query_smi:",query_smi.shape)
-            sys.exit()
-            queries_smi = transpose_qkv(self.W_q_s(query_smi), self.num_heads)
+        queries_prot = transpose_qkv(self.W_q_p(query_prot), self.num_heads) 
+        print("MultiHeadExternalMixAttention query_smi:",query_smi.shape) ##########################################
+        queries_smi = transpose_qkv(self.W_q_s(query_smi), self.num_heads)
         keys_prot = transpose_qkv(self.W_k_p(key_prot), self.num_heads)
+        print("MultiHeadExternalMixAttention key_smi after transpose:",key_smi.shape)
         keys_smi = transpose_qkv(self.W_k_s(key_smi), self.num_heads)
         values = transpose_qkv(self.W_v(values), self.num_heads)
         queris_matrix = queries_prot.reshape(-1,1) * queries_smi
@@ -338,7 +336,7 @@ class ProteinEncoding(nn.Module):
     """
     def __init__(self, prot_MLP, dropout, **kwargs):
         super(ProteinEncoding, self).__init__(**kwargs)
-        self.dense1 = nn.Linear(30, 32)
+        self.dense1 = nn.Linear(100, 32)
         self.relu1 = nn.ReLU()
         self.dense2 = nn.Linear(32,64)
         self.relu2 = nn.ReLU()
@@ -365,7 +363,9 @@ class PALACE_Encoder(Encoder):
                  use_bias=False, **kwargs):
         super(PALACE_Encoder, self).__init__(**kwargs)
         self.num_hiddens = num_hiddens
+        print("PALACE_Encoder vocab_size:",vocab_size) ###################################################################
         self.embedding = nn.Embedding(vocab_size, num_hiddens)
+        self.convT1d = nn.ConvTranspose1d(in_channels=30, out_channels=30, kernel_size=(100,1),stride=1)
         self.pos_encoding = PositionalEncoding(num_hiddens, dropout)
 
         # here implement ProteinEncoding
@@ -376,6 +376,7 @@ class PALACE_Encoder(Encoder):
         key_size = (prot_MLP[-1],key_size)
         query_size = (prot_MLP[-1],query_size)
         for i in range(num_layers):
+            print("PALACE_Encoder blk:",key_size,'\t',query_size,'\t',value_size)
             self.blks.add_module("block"+str(i),
                 EncoderBlock(key_size, query_size, value_size, num_hiddens,
                              norm_shape, ffn_num_input, ffn_num_hiddens,
@@ -386,11 +387,16 @@ class PALACE_Encoder(Encoder):
         # 因此嵌入值乘以嵌入维度的平方根进行缩放，
         # 然后再与位置编码相加。
         X_prot, X_smi = X
-        X_smi = self.pos_encoding(self.embedding(X_smi) * math.sqrt(self.num_hiddens))
-        
+        print("PALACE_Encoder:",X_prot.shape,'\t',X_smi.shape) ############################################################
+        X_smi = self.embedding(X_smi)
+        print("PALACE_Encoder X_smi after embedding:",X_smi.shape)
+        X_smi = self.pos_encoding(X_smi * math.sqrt(self.num_hiddens))
+        print("PALACE_Encoder X_smi after pos_encoding:",X_smi.shape)
         # pass to prot_encoding
+        X_prot = self.convT1d(X_prot.unsqueeze(2).unsqueeze(3)).squeeze(3)
+        print("PALACE_Encoder X_prot after convTrans:",X_prot.shape) ############################################################
         X_prot = self.prot_encoding(X_prot)
-        
+        print("PALACE_Encoder X_prot after prot_encoding:",X_prot.shape) ############################################################
         self.attention_weights = [None] * len(self.blks)
         for i, blk in enumerate(self.blks):
             X = blk((X_prot,X_smi), valid_lens)
@@ -769,12 +775,7 @@ def prot_to_features(prot : list, trained_model_dir: str, device: str, batch_siz
             attention_mask = torch.tensor(ids['attention_mask']).to(device)
             # reshape into batch
             seq_num,seq_len = input_ids.shape
-            try:
-                embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
-            except:
-                print("input_ids.shape:",input_ids.shape)
-                import sys
-                sys.exit()
+            embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
             # Remove padding ([PAD]) and special tokens ([CLS],[SEP])
             # that is added by ProtBert-BFD model
             for seq_num in range(len(embedding)):
@@ -784,7 +785,7 @@ def prot_to_features(prot : list, trained_model_dir: str, device: str, batch_siz
                 seq_emd = embedding[seq_num][1:seq_len-1]
                 prot_features.append(seq_emd)
     prot_features = torch.stack([torch.tensor(x).sum(dim=0) for x in prot_features])
-    
+    del model,tokenizer
     return prot_features
 
 # =================================Utils=======================================
@@ -909,10 +910,15 @@ def train_PALACE(net, data_iter, lr, num_epochs, tgt_vocab, device,
         for batch in data_iter:
             optimizer.zero_grad()
             X_prot, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
+            # bos: torch.Size([batch_size, 1])
             bos = torch.tensor([tgt_vocab['<bos>']] * Y.shape[0],
                           device=device).reshape(-1, 1)
+            # dec_input: torch.Size([batch_size, num_steps])
+            # removed the last tok in each sample of Y: (Y: [batch_size, num_steps-1])
+            # add bos tok in begining of each sample of Y: (dec_input[batch_size, num_steps])
             dec_input = torch.cat([bos, Y[:, :-1]], 1)  # 强制教学
-            Y_hat, _ = net((X_prot, X), dec_input, X_valid_len)
+            print("train_PALACE:",X_prot.shape,'\t',X.shape) #######################################################
+            Y_hat, _ = net((X_prot, X), (X_prot,dec_input), X_valid_len)
             l = loss(Y_hat, Y, Y_valid_len)
             l.sum().backward()	# 损失函数的标量进行“反向传播”
             grad_clipping(net, 1)
@@ -930,7 +936,7 @@ def train_PALACE(net, data_iter, lr, num_epochs, tgt_vocab, device,
 # um_layers: number of blocks (same for encoder and decoder)
 
 
-num_hiddens, num_layers, dropout, batch_size, num_steps = 100, 2, 0.1, 2, 10
+num_hiddens, num_layers, dropout, batch_size, num_steps = 32, 2, 0.1, 2, 10
 lr, num_epochs, device = 0.005, 1, try_gpu()
 ffn_num_input, ffn_num_hiddens, num_heads = 32, 64, 4
 key_size, query_size, value_size = 32, 32, 32
@@ -943,14 +949,14 @@ first_train = True
 # data 分成300份训练。但是要保证vocab一样。能存储vocab，能加载vocab
 print("PALACE: loading data...")
 if first_train:
-    train_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size,
+    data_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size,
                      num_steps, device, trained_model_dir = trained_model_dir)
 else:
     # if not first train, will use former vocab
     vocab_dir = ['PALACE/src_vocab.pkl','PALACE/tgt_vocab.pkl']
-    train_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size,
+    data_iter, src_vocab, tgt_vocab = load_data_nmt(data_dir,batch_size,
                              num_steps, device, vocab_dir,trained_model_dir)
-#train_iter, src_vocab, tgt_vocab = load_data_nmt(batch_size, num_steps)
+#data_iter, src_vocab, tgt_vocab = load_data_nmt(batch_size, num_steps)
 
 print("PALACE: building encoder...")
 encoder = PALACE_Encoder(
@@ -964,7 +970,7 @@ decoder = PALACE_Decoder(
     num_layers, dropout)
 net = PALACE(encoder,decoder)
 print("PALACE: training...")
-train_PALACE(net, train_iter, lr, num_epochs, tgt_vocab, device, trained_model_dir)
+train_PALACE(net, data_iter, lr, num_epochs, tgt_vocab, device, trained_model_dir)
 #torch.cuda.empty_cache()
 
 
