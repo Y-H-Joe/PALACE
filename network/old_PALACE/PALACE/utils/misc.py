@@ -95,7 +95,6 @@ def set_random_seed(seed, is_cuda):
     还有，如果你用了cuda，别忘了cuda的随机数种子。这里还需要用到torch.backends.cudnn.deterministic.
     """
     if seed > 0:
-        
         torch.manual_seed(seed)
         # this one is needed for torchtext random call (shuffled iterator)
         # in multi gpu it ensures datasets are read in the same order

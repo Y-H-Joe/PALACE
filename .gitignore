@@ -834,3 +834,4 @@ network/old_torch/torch/utils/trainer/plugins/time.py
 network/old_torch/torch/utils/trainer/trainer.py
 network/old_torch/torch/version.py
 network/trained_models/pytorch_model.bin
+network/PALACE/trained_models/pytorch_model.bin

@@ -36,21 +36,7 @@ from d2l import torch as d2l
 from transformers import BertForMaskedLM, BertTokenizer
 from transformers import logging as tr_log
 import logging
-import sys
-
-seed = 3434
-print_shape = False # True or False
-tr_log.set_verbosity_error() # will not print warning
-
-# ===============================Multi-GPUs====================================
-#%% Multi-GPUs
-def try_gpu(i=0):
-    """如果存在，则返回gpu(i)，否则返回cpu()
-
-    Defined in :numref:`sec_use_gpu`"""
-    if torch.cuda.device_count() >= i + 1:
-        return torch.device(f'cuda:{i}')
-    return torch.device('cpu')
+import random
 
 # ==============================Model building=================================
 #%% Model building
@@ -117,12 +103,8 @@ class ProteinEncoding(nn.Module):
         printer("ProteinEncoding","prot_MLP",prot_MLP,"__init__")
         self.dense1 = nn.Linear(30, prot_MLP[0])
         self.relu1 = nn.ReLU()
-        self.dense2 = nn.Linear(prot_MLP[0],prot_MLP[1])
+        self.dense2 = nn.Linear(prot_MLP[0], feat_space_dim)
         self.relu2 = nn.ReLU()
-        self.dense3 = nn.Linear(prot_MLP[1], prot_MLP[2])
-        self.relu3 = nn.ReLU()
-        self.dense4 = nn.Linear(prot_MLP[2], feat_space_dim)
-        self.relu3 = nn.ReLU()
         self.ln = nn.LayerNorm(feat_space_dim)
         self.dropout = nn.Dropout(dropout)
 
@@ -135,8 +117,7 @@ class ProteinEncoding(nn.Module):
         X = self.dense1(X)
         X = self.relu1(X)
         printer("ProteinEncoding","X",X.shape,"dense1 and relu1")
-        return self.ln(self.dropout(self.dense4(self.relu3(self.dense3(\
-               self.relu2(self.dense2(X)))))))
+        return self.ln(self.dropout(self.relu2(self.dense2(X))))
 
 def transpose_qkv(X, num_heads):
     """
@@ -845,6 +826,25 @@ def load_data_nmt(data_dir,batch_size, num_steps, device, vocab_dir, trained_mod
 
 # =================================Utils=======================================
 #%% Utils
+def set_random_seed(seed, is_cuda):
+    """Sets the random seed.
+    为什么使用相同的网络结构，跑出来的效果完全不同，用的学习率，迭代次数，batch size 都是一样？
+    固定随机数种子是非常重要的。但是如果你使用的是PyTorch等框架，还要看一下框架的种子是否固定了。
+    还有，如果你用了cuda，别忘了cuda的随机数种子。这里还需要用到torch.backends.cudnn.deterministic.
+    """
+    if seed > 0:
+        torch.manual_seed(seed)
+        # this one is needed for torchtext random call (shuffled iterator)
+        # in multi gpu it ensures datasets are read in the same order
+        random.seed(seed)
+        # some cudnn methods can be random even after fixing the seed
+        # unless you tell it to be deterministic
+        torch.backends.cudnn.deterministic = True
+
+    if is_cuda and seed > 0:
+        # These ensure same initialization in multi gpu mode
+        torch.cuda.manual_seed(seed)
+
 class Accumulator:
     """在n个变量上累加"""
     def __init__(self, n):
@@ -910,10 +910,42 @@ astype = lambda x, *args, **kwargs: x.type(*args, **kwargs)
 transpose = lambda x, *args, **kwargs: x.t(*args, **kwargs)
 reduce_mean = lambda x, *args, **kwargs: x.mean(*args, **kwargs)
 
+# ===============================Settings======================================
+#%% Settings
+seed = 3434
+# True or False
+print_shape = False
+# will not print warning
+tr_log.set_verbosity_error()
+# each smi_tok or prot_feat will be projected to feat_space_dim
+feat_space_dim = 128
+# notation protein length (any length of protein will be projected to fix length)
+prot_nota_len = 1000
+# number of encoder/decoder blocks
+num_blks = 2
+# dropout ratio for AddNorm,PositionalEncoding,DotProductMixAttention,ProteinEncoding
+dropout = 0.2
+# number of samples using per train
+batch_size = 2
+# time steps/window size,ref d2l 8.1 and 8.3
+num_steps = 10
+# learning rate
+lr = 0.005
+# number of epochs
+num_epochs = 1
+# feed forward intermidiate number of hiddens
+ffn_num_hiddens = 64
+# number of heads
+num_heads = 8
+# protein encoding features feed forward
+prot_MLP = [128]
+# multi-head attention will divide feat_space_num by num_heads
+assert feat_space_dim % num_heads == 0, "feat_space_dim % num_heads != 0."
 # ===============================Training======================================
 #%% Training
-def train_PALACE(net, data_iter, lr, num_epochs, tgt_vocab, device,
-                 trained_model_dir=None):
+
+def train_PALACE(piece,global_epoch,net, data_iter, lr, num_epochs, tgt_vocab,
+                 device,loss_log, trained_model_dir=None):
     """训练序列到序列模型
     """
     def xavier_init_weights(m):
@@ -929,8 +961,6 @@ def train_PALACE(net, data_iter, lr, num_epochs, tgt_vocab, device,
     optimizer = torch.optim.Adam(net.parameters(), lr=lr)
     loss = MaskedSoftmaxCELoss()
     net.train()
-    animator = d2l.Animator(xlabel='epoch', ylabel='loss',
-                     xlim=[10, num_epochs])
     for epoch in range(num_epochs):
         timer = Timer()
         metric = Accumulator(2)  # 训练损失总和，词元数量
@@ -944,65 +974,51 @@ def train_PALACE(net, data_iter, lr, num_epochs, tgt_vocab, device,
             # dec_input: torch.Size([batch_size, num_steps])
             # removed the last tok in each sample of Y: (Y: [batch_size, num_steps-1])
             # add bos tok in begining of each sample of Y: (dec_input[batch_size, num_steps])
-            dec_input = torch.cat([bos, Y[:, :-1]], 1)  # 强制教学
+            dec_input = torch.cat([bos, Y[:, :-1]], 1)  # force teaching
             printer("train_PALACE:","X_prot",X_prot.shape)
             printer("train_PALACE:","X",X.shape)
 
             Y_hat, _ = net((X_prot, X), (X_prot,dec_input), X_valid_len)
             l = loss(Y_hat, Y, Y_valid_len)
-            l.sum().backward()	# 损失函数的标量进行“反向传播”
+            l.sum().backward() # 损失函数的标量进行“反向传播”
             grad_clipping(net, 1)
             num_tokens = Y_valid_len.sum()
             optimizer.step()
             with torch.no_grad():
                 metric.add(l.sum(), num_tokens)
+        with open(loss_log,'a') as o:
+            o.write(f'global_epoch:{global_epoch}\tpiece:{piece}\tepoch:{epoch}\tloss:{metric[0] / metric[1]:.3f}\tsec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n')
 
-        if (epoch + 1) % 10 == 0:
-            animator.add(epoch + 1, (metric[0] / metric[1],))
-    print(f'loss {metric[0] / metric[1]:.3f}, {metric[1] / timer.stop():.1f} '
-        f'tokens/sec on {str(device)}')
-
-
-# ===============================Settings======================================
-#%% Settings
-# num_steps: window size, 时间步, ref d2l 8.1 and 8.3
-# num_hiddens: also determines the output feature size of embeddings
-# num_layers: number of blocks (same for encoder and decoder)
-
-# each smi_tok or prot_feat will be projected to feat_space_dim
-feat_space_dim = 128
-# notation protein length (any length of protein will be projected to fix length)
-prot_nota_len = 1000
-# number of encoder/decoder blocks
-num_blks = 2
-# dropout ratio for AddNorm,PositionalEncoding,DotProductMixAttention,ProteinEncoding
-dropout = 0.2
-# number of samples using per train
-batch_size = 2
-# time steps/window size
-num_steps = 10
-# learning rate
-lr = 0.005
-# number of epochs
-num_epochs = 1
-# gpu id/cpu
-device = try_gpu()
-# feed forward intermidiate number of hiddens
-ffn_num_hiddens = 64
-# number of heads
-num_heads = 8
-# protein encoding features feed forward
-prot_MLP = [128,256,128]
-
-# =================================Main========================================
-#%% Main
+# data 分成300份训练。但是要保证vocab一样。能存储vocab，能加载vocab
+piece = 1
+global_epoch = 1
+loss_log = 'PALACE.loss.log'
 data_dir = 'data/sample_sample.txt'
 trained_model_dir = 'trained_models/'
-first_train = False
-# multi-head attention will divide feat_space_num by num_heads
-assert feat_space_dim % num_heads == 0, "feat_space_dim % num_heads != 0."
-# data 分成300份训练。但是要保证vocab一样。能存储vocab，能加载vocab
+
+printer("=======================PALACE: assigning GPU...=======================")
+# multi-gpu
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--local_rank", type=int)
+args = parser.parse_args()
+
+def try_gpu(i=args.local_rank):
+    """如果存在，则返回gpu(i)，否则返回cpu()
+    """
+    if i >= 0:
+        return torch.device(f'cuda:{i}')
+    return torch.device('cpu')
+# gpu id/cpu
+device = try_gpu()
+
+# set the cuda backend seed
+set_random_seed(seed, device >= 0)
+
+
 printer("=======================PALACE: loading data...=======================")
+first_train = False
+
 if first_train:
     vocab_dir = None
     data_iter, src_vocab, tgt_vocab = load_data_nmt(
@@ -1023,10 +1039,16 @@ vocab_size = len(tgt_vocab)
 decoder = PALACE_Decoder(
     vocab_size, prot_nota_len, feat_space_dim, ffn_num_hiddens, num_heads, num_blks, dropout, prot_MLP)
 
-
 net = PALACE(encoder,decoder).to(device)
+
+
+torch.cuda.set_device(args.local_rank)
+torch.distributed.init_process_group(backend='nccl')
+net = net.cuda()
+net = torch.nn.parallel.DistributedDataParallel(net, find_unused_parameters=True)
+
 printer("=======================PALACE: training...=======================")
-train_PALACE(net, data_iter, lr, num_epochs, tgt_vocab, device, trained_model_dir)
+train_PALACE(piece,global_epoch, net, data_iter, lr, num_epochs, tgt_vocab, device, loss_log, trained_model_dir)
 
 # ==============================Prediction=====================================
 #%% Prediction
