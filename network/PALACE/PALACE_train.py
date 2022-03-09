@@ -40,13 +40,15 @@ feat_space_dim = 128
 # notation protein length (any length of protein will be projected to fix length)
 prot_nota_len = 1000
 # number of encoder/decoder blocks
-num_blks = 2
+num_blks = 12
 # dropout ratio for AddNorm,PositionalEncoding,DotProductMixAttention,ProteinEncoding
 dropout = 0.2
 # number of samples using per train
 batch_size = 256
+# number of protein reading when trans protein to features using pretrained BERT
+prot_read_batch_size = 6
 # time steps/window size,ref d2l 8.1 and 8.3
-num_steps = 10
+num_steps = 250
 # learning rate
 lr = 0.005
 # number of epochs
@@ -75,7 +77,6 @@ def train_PALACE(piece,global_epoch,net, data_iter, lr, num_epochs, tgt_vocab,
                     nn.init.xavier_uniform_(m._parameters[param])
 
     net.apply(xavier_init_weights)
-    net.to(device)
     optimizer = torch.optim.Adam(net.parameters(), lr=lr)
     loss = MaskedSoftmaxCELoss()
     net.train()
@@ -107,32 +108,38 @@ def train_PALACE(piece,global_epoch,net, data_iter, lr, num_epochs, tgt_vocab,
         with open(loss_log,'a') as o:
             o.write(f'global_epoch:{global_epoch}\tpiece:{piece}\tepoch:{epoch}\tloss:{metric[0] / metric[1]:.3f}\tsec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n')
 
+
+
 # data 分成300份训练。但是要保证vocab一样。能存储vocab，能加载vocab
-piece = 1
-global_epoch = 1
+piece = sys.argv[1]
+# piece = 1
+global_epoch = sys.argv[2]
+# global_epoch = 1
 loss_log = 'PALACE.loss.log'
-data_dir = './data/PALACE_train.shuf.tsv_000'
+data_dir = sys.argv[3]
+#data_dir = './data/fake_sample_for_vocab.txt'
+
+if int(piece) == int(global_epoch) == 1: first_train = True
+else: first_train = False
+
 trained_model_dir = './trained_models/'
 print_shape = False
-first_train = True
+
 printer("=======================PALACE: assigning GPU...=======================",print_=True)
-# multi-gpu
-# gpu id/cpu
-gpu_rank = int(os.environ['LOCAL_RANK'])
-device = try_gpu(gpu_rank)
+torch.distributed.init_process_group(backend="nccl")
+local_rank = torch.distributed.get_rank()
+torch.cuda.set_device(local_rank)
+device = try_gpu(local_rank)
 # set the cuda backend seed
-set_random_seed(seed, gpu_rank>= 0)
+set_random_seed(seed, local_rank>= 0)
 
 printer("=======================PALACE: loading data...=======================",print_=True)
-if first_train:
-    vocab_dir = None
-    data_iter, src_vocab, tgt_vocab = load_data_nmt(
-            data_dir,batch_size,num_steps, device, vocab_dir, trained_model_dir)
-else:
-    # if not first train, will use former vocab
-    vocab_dir = ['./saved/src_vocab.pkl','./saved/tgt_vocab.pkl']
-    data_iter, src_vocab, tgt_vocab = load_data_nmt(
-            data_dir,batch_size,num_steps, device, vocab_dir, trained_model_dir)
+# if not first train, will use former vocab
+if first_train: vocab_dir = None
+else: vocab_dir = ['./saved/merge_vocab.pkl','./saved/merge_vocab.pkl']
+
+data_iter, src_vocab, tgt_vocab = load_data_nmt(
+        data_dir,batch_size,prot_read_batch_size, num_steps, device, vocab_dir, trained_model_dir)
 
 printer("=======================PALACE: building encoder...=======================",print_=True)
 vocab_size = len(src_vocab)
@@ -143,15 +150,25 @@ printer("=======================PALACE: building decoder...=====================
 vocab_size = len(tgt_vocab)
 decoder = PALACE_Decoder(
     vocab_size, prot_nota_len, feat_space_dim, ffn_num_hiddens, num_heads, num_blks, dropout, prot_MLP)
+net = PALACE(encoder,decoder)
+try:
+    pretrained_model = './trained_models/PALACE_{}_{}.pt'.format(global_epoch-1,piece-1)
+    net = net.load_state_dict(torch.load(pretrained_model))
+except:
+    printer("===========cannot load pretrained model {}, start new training...=========".format(pretrained_model),print_=True)
+
+printer("=======================PALACE: running on {}...=======================".format(device),print_=True)
+net.to(device)
+net = torch.nn.parallel.DistributedDataParallel(net,device_ids=[local_rank],output_device=local_rank,find_unused_parameters=True)
 
 printer("=======================PALACE: training...=======================",print_=True)
-net = PALACE(encoder,decoder).to(device)
-net = net.cuda()
-net = torch.nn.parallel.DistributedDataParallel(net, find_unused_parameters=True)
 train_PALACE(piece,global_epoch, net, data_iter, lr, num_epochs, tgt_vocab, device, loss_log, trained_model_dir)
 
 printer("=======================PALACE: saving model...=======================",print_=True)
-torch.save(net.state_dict(), './trained_models/PALACE_{}_{}.pt'.format(global_epoch,piece))
+try:
+    torch.save(net.state_dict(), './trained_models/PALACE_{}_{}.pt'.format(global_epoch,piece))
+except:
+    torch.save(net.state_dict(), './trained_models/PALACE_{}_{}.new.pt'.format(global_epoch,piece))
 
 logging.shutdown()
 

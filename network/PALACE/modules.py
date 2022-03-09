@@ -33,6 +33,7 @@ import re
 import torch
 from torch import nn
 from torch.utils import data
+from torch.utils.data.distributed import DistributedSampler
 from transformers import BertForMaskedLM, BertTokenizer
 from transformers import logging as tr_log
 import logging
@@ -696,7 +697,7 @@ def retrieve_vocab(vocab_dir):
     with open(vocab_dir,'rb') as r:
         return pickle.load(r)
 
-def prot_to_features(prot : list, trained_model_dir: str, device: str, batch_size: int):
+def prot_to_features(prot : list, trained_model_dir: str, device: str, prot_read_batch_size: int):
     """
     call pre-trained BERT to generate prot features
     input: prot: [prot_seq_sample1,prot_seq_sample2,...,prot_seq_sampleN]
@@ -715,17 +716,25 @@ def prot_to_features(prot : list, trained_model_dir: str, device: str, batch_siz
     # aa is amino acid
     # replace unknown aa to X and inter-fill with space
     prot_tok = [' '.join([re.sub(r"[UZOB]", "X", aa) for aa in list(seq)]) for seq in prot]
-    prot_tok_list = [prot_tok[i:i+batch_size] for i in range(0, len(prot_tok), batch_size)]
+    prot_tok_list = [prot_tok[i:i+prot_read_batch_size] for i in range(0, len(prot_tok), prot_read_batch_size)]
     prot_features = []
     with torch.no_grad():
-        for batch in prot_tok_list:
+        for index,batch in enumerate(prot_tok_list):
             # Tokenize, encode sequences and load it into the GPU if possibile
             ids = tokenizer.batch_encode_plus(batch, add_special_tokens=True, padding=True)
             input_ids = torch.tensor(ids['input_ids']).to(device)
             attention_mask = torch.tensor(ids['attention_mask']).to(device)
             # reshape into batch
             seq_num,seq_len = input_ids.shape
-            embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
+            try:
+                embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
+            except Exception as e:
+                #import sys
+                #sys.exit("{}.\nprot_to_features failed at {} batch.".format(e,index))
+                print("=====================prot_to_features failed at {} batch with batch_size {}.=================".format(index,prot_read_batch_size))
+                print("====================={}=================".format(e))
+                #prot_num = index * batch_size
+                break # memory restriction, can only get these protein features
             # Remove padding ([PAD]) and special tokens ([CLS],[SEP])
             # that is added by ProtBert-BFD model
             for seq_num in range(len(embedding)):
@@ -734,11 +743,12 @@ def prot_to_features(prot : list, trained_model_dir: str, device: str, batch_siz
                 # remove special tokens
                 seq_emd = embedding[seq_num][1:seq_len-1]
                 prot_features.append(seq_emd)
+
     prot_features = torch.stack([torch.tensor(x).sum(dim=0) for x in prot_features ])
     del model,tokenizer
     return prot_features
 
-def read_data(data_dir, batch_size, device, trained_model_dir, prot_col = 2, src_col = 3, tgt_col = 4, sep = '\t'):
+def read_data(data_dir, prot_read_batch_size, device, trained_model_dir, prot_col = 2, src_col = 3, tgt_col = 4, sep = '\t'):
     """
     read text file and return prot_features, source, target
     let's say in total N samples in text file,
@@ -759,11 +769,17 @@ def read_data(data_dir, batch_size, device, trained_model_dir, prot_col = 2, src
     # prot: [prot_seq_sample1,prot_seq_sample2,...,prot_seq_sampleN]
     # source: [[tok1,tok2...],[tok3,tok2,...],...until_N]
     # target: simliar as source
-    prot_features = prot_to_features(prot, trained_model_dir, device, batch_size = 6)
+    prot_features = prot_to_features(prot, trained_model_dir, device, prot_read_batch_size)
     printer('read_data','prot_features',prot_features.shape,'prot_to_features')
     # prot_feature: torch.Size([N, 30])
     # 30 is the feature dimension for each amino acid
     # prot_features compress all amino acids to feature direction
+
+    # truncate
+    if len(source) > len(prot_features):
+        source = source[:len(prot_features)]
+        target = target[:len(prot_features)]
+
     return prot_features, source, target
 
 def build_array_nmt(lines, vocab, num_steps):
@@ -786,14 +802,14 @@ def build_array_nmt(lines, vocab, num_steps):
         astype(array != vocab['<pad>'], torch.int32), 1)
     return array, valid_len
 
-def load_data_nmt(data_dir,batch_size, num_steps, device, vocab_dir, trained_model_dir):
+def load_data_nmt(data_dir,batch_size,prot_read_batch_size, num_steps, device, vocab_dir, trained_model_dir):
     """返回翻译数据集的迭代器和词表
         vocab_dir: [src_vocab,tgt_vocab]
     """
     # prot_feature: torch.Size([N, 30])
     # prot: [prot_seq_sample1,prot_seq_sample2,...,prot_seq_sampleN]
     # source: [[tok1,tok2...],[tok3,tok2,...],...until_N]
-    prot_features, source, target = read_data(data_dir,batch_size, device,trained_model_dir)
+    prot_features, source, target = read_data(data_dir, prot_read_batch_size, device,trained_model_dir)
 
     if vocab_dir:
         assert os.path.exists(vocab_dir[0]) and os.path.exists(vocab_dir[1]),"cannot find available vocab"
@@ -802,8 +818,10 @@ def load_data_nmt(data_dir,batch_size, num_steps, device, vocab_dir, trained_mod
     else:
         src_vocab = Vocab(source, min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
         tgt_vocab = Vocab(target, min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
+        merge_vocab = Vocab(source + target,min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
         save_vocab(src_vocab,'./saved/src_vocab.pkl')
         save_vocab(tgt_vocab,'./saved/tgt_vocab.pkl')
+        save_vocab(merge_vocab,'./saved/merge_vocab.pkl')
 
     # src_array: ([N,num_steps]): tensor([[tok1_to_idx,tok2_to_idx,...,tok_num_steps_to_idx],[...],...])
     # src_valid_len: ([N]): tensor([valid_len_for_each_sample])
@@ -818,7 +836,8 @@ def load_data_nmt(data_dir,batch_size, num_steps, device, vocab_dir, trained_mod
         """构造一个PyTorch数据迭代器
         """
         dataset = data.TensorDataset(*data_arrays)
-        return data.DataLoader(dataset, batch_size, shuffle=True, drop_last = False)
+        return data.DataLoader(dataset, batch_size, shuffle=True, drop_last = False,
+                               sampler=DistributedSampler(dataset, shuffle=True))
 
     data_iter = load_array(data_arrays, batch_size)
 
@@ -833,8 +852,6 @@ def try_gpu(i=0):
     """
     if i >= 0:
         return torch.device(f'cuda:{i}')
-        torch.cuda.set_device(i)
-        torch.distributed.init_process_group(backend='nccl')
     return torch.device('cpu')
 
 def set_random_seed(seed, is_cuda):
@@ -897,7 +914,7 @@ class Timer:
         """返回累计时间"""
         return np.array(self.times).cumsum().tolist()
 
-def printer(function,instance = None,content = None ,after = None,print_=False):
+def printer(function,instance = None,content = None ,after = None, print_=False,print_shape=False):
     """
     'function': 'instance' after 'after' is: 'content'
     """
@@ -919,7 +936,7 @@ def printer(function,instance = None,content = None ,after = None,print_=False):
             else:
                 print("{}".format(function))
             print(time.localtime())
-    except: pass
+    except Exception as e: print(e)
 
 
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
