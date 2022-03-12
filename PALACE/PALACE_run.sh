@@ -1,0 +1,45 @@
+#!/bin/bash
+
+##SBATCH --partition=general
+##SBATCH --partition=bigmem4
+##SBATCH --partition=bigmem2
+#SBATCH --partition=gpu4
+##SBATCH --partition=gpu2
+## sinfo
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=4
+#SBATCH --cpus-per-task=1
+#SBATCH --time=3-00:00:00
+##SBATCH --mem=5G
+##SBATCH --exclusive
+#SBATCH --ntasks-per-node=4
+#SBATCH --gres=gpu:tesla:4
+##SBATCH --job-name "yihang's job"
+
+#SBATCH --chdir /scratch/yzz0191/metabolism_20220127/
+#SBATCH --error /scratch/yzz0191/metabolism_20220127/code/e/e.run.%A_%a.txt  ######
+#SBATCH --output /scratch/yzz0191/metabolism_20220127/code/e/o.run.%A_%a.txt  ######
+##SBATCH --array 2-6
+
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=yzz0191@auburn.edu
+
+#########################################################################
+###########!!!!!!!!!!!!!    Remember to change SBATCH --array    !!!!!!!!!!!!!!!!################
+#########################################################################
+dp=/scratch/yzz0191/metabolism_20220127/PALACE   #####
+cd ${dp}
+
+:<<"Cm"
+taskID=$SLURM_ARRAY_TASK_ID
+NAMEFILE=code/namefile.cdhit.txt
+FqNAME=`sed -n "${taskID}p" $NAMEFILE`
+Cm
+
+module load cuda11.0/toolkit
+
+for piece in {0..1666}
+do
+    time ~/anaconda3/envs/PALACE/bin/torchrun --nproc_per_node=4 PALACE_train.py  $piece
+done

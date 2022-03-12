@@ -835,3 +835,7 @@ network/old_torch/torch/utils/trainer/trainer.py
 network/old_torch/torch/version.py
 network/trained_models/pytorch_model.bin
 network/PALACE/trained_models/pytorch_model.bin
+PALACE/prot_models/prose/prose_dlm_3x1024.sav
+*.sav
+*.bin
+*.pt
