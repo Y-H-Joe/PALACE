@@ -53,7 +53,7 @@ def main(rank, world_size,piece):
             # number of samples using per train
             self.batch_size = 12
             # number of protein reading when trans protein to features using pretrained BERT
-            self.prot_read_batch_size = 6
+            #self.prot_read_batch_size = 6
             # time steps/window size,ref d2l 8.1 and 8.3
             self.num_steps = 250
             # learning rate
@@ -79,7 +79,7 @@ def main(rank, world_size,piece):
 # ===============================Training======================================
 #%% Training
     loss_log = 'PALACE.loss.log'
-    data_dir = './data/PALACE_train.shuf.batch1.sample.tsv_{0:04}'.format(piece)
+    data_dir = './data/PALACE_train.shuf.batch1.tsv_{0:04}'.format(piece)
     #data_dir = './data/fake_sample_for_vocab.txt'
 
     if int(piece) == 0: first_train = True

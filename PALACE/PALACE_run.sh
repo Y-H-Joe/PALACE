@@ -10,7 +10,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
 #SBATCH --cpus-per-task=1
-#SBATCH --time=3-00:00:00
+#SBATCH --time=0-30:00:00
 ##SBATCH --mem=5G
 ##SBATCH --exclusive
 #SBATCH --ntasks-per-node=4
@@ -38,8 +38,9 @@ FqNAME=`sed -n "${taskID}p" $NAMEFILE`
 Cm
 
 module load cuda11.0/toolkit
+world_size=4
 
 for piece in {0..1666}
 do
-    time ~/anaconda3/envs/PALACE/bin/torchrun --nproc_per_node=4 PALACE_train.py  $piece
+     ~/anaconda3/envs/PALACE/bin/python PALACE_train.py $piece $world_size  
 done

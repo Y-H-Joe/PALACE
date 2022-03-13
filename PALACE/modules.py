@@ -102,6 +102,20 @@ class PositionalEncoding(nn.Module):
         printer("PositionalEncoding","output",X.shape)
         return self.dropout(X)
 
+class ProteinEncoding_large(nn.Module):
+    """
+    protein encoding block.
+    """
+    def __init__(self,feat_space_dim, prot_MLP, dropout, **kwargs):
+        super(ProteinEncoding_large, self).__init__(**kwargs)
+        printer("ProteinEncoding","prot_MLP",prot_MLP,"__init__")
+        self.dense1 = nn.Linear(45, prot_MLP[0])
+        self.relu1 = nn.ReLU()
+        self.dense2 = nn.Linear(prot_MLP[0], feat_space_dim)
+        self.relu2 = nn.ReLU()
+        self.ln = nn.LayerNorm(feat_space_dim)
+        self.dropout = nn.Dropout(dropout)
+
 class ProteinEncoding(nn.Module):
     """
     protein encoding block.
@@ -109,10 +123,8 @@ class ProteinEncoding(nn.Module):
     def __init__(self,feat_space_dim, prot_MLP, dropout, **kwargs):
         super(ProteinEncoding, self).__init__(**kwargs)
         printer("ProteinEncoding","prot_MLP",prot_MLP,"__init__")
-        self.dense1 = nn.Linear(45, prot_MLP[0])
-        self.relu1 = nn.ReLU()
-        self.dense2 = nn.Linear(prot_MLP[0], feat_space_dim)
-        self.relu2 = nn.ReLU()
+        self.dense = nn.Linear(45, feat_space_dim)
+        self.relu = nn.ReLU()
         self.ln = nn.LayerNorm(feat_space_dim)
         self.dropout = nn.Dropout(dropout)
 
@@ -122,10 +134,8 @@ class ProteinEncoding(nn.Module):
         output: torch.tensor([batch_size,45,feat_space_dim])
         """
         assert X is not None, "ProteinEncoding input cannot be None."
-        X = self.dense1(X)
-        X = self.relu1(X)
-        printer("ProteinEncoding","X",X.shape,"dense1 and relu1")
-        return self.ln(self.dropout(self.relu2(self.dense2(X))))
+
+        return self.ln(self.dropout(self.relu(self.dense(X))))
 
 def transpose_qkv(X, num_heads):
     """
@@ -303,6 +313,7 @@ class EncoderBlock(nn.Module):
         self.addnorm1 = AddNorm(feat_space_dim, dropout)
         self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
         self.addnorm2 = AddNorm(feat_space_dim, dropout)
+        self.addnorm3 = AddNorm(feat_space_dim, dropout)
 
     def forward(self, X, valid_lens):
         # X_prot: tensor([batch_size,prot_nota_len,feat_space_dim])
@@ -324,7 +335,7 @@ class EncoderBlock(nn.Module):
         X = self.ffn(X)
         printer("EncoderBlock","X",X.shape,"PositionWiseFFN")
 
-        return self.addnorm2(X, X)
+        return self.addnorm3(self.addnorm2(X, X),X_smi)
 
 class PALACE_Encoder(Encoder):
     """
@@ -462,6 +473,7 @@ class DecoderBlock(nn.Module):
         self.addnorm2 = AddNorm(feat_space_dim, dropout)
         self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
         self.addnorm3 = AddNorm(feat_space_dim, dropout)
+        self.addnorm4 = AddNorm(feat_space_dim, dropout)
 
     def forward(self, X, state):
         # init state: (enc_outputs, enc_valid_lens, [None] * self.num_blks])
@@ -519,7 +531,7 @@ class DecoderBlock(nn.Module):
         printer("DecoderBlock","X_smi_y3",X_smi_y3.shape,"second attention")
         X_smi_y3 = self.addnorm2(X_smi_y2, X_smi_y3)
 
-        return self.addnorm3(X_smi_y3, self.ffn(X_smi_y3)), state
+        return self.addnorm4(self.addnorm3(X_smi_y3, self.ffn(X_smi_y3)),X_smi_y), state
 
 class PALACE_Decoder(Decoder):
     def __init__(self, vocab_size, prot_nota_len, feat_space_dim, ffn_num_hiddens, num_heads,
@@ -560,8 +572,6 @@ class PALACE_Decoder(Decoder):
         # 然后再与位置编码相加。
         X_prot, X_smi_y = X
 
-        print(f"PALACE_Decoder X_prot 1:{X_prot}")
-        print(f"PALACE_Decoder X_smi_y 1 blk:{X_smi_y}")
 
         # X_prot: tensor([batch_size,45])
         # X_smi_y: tensor([batch_size,num_steps])
@@ -569,44 +579,35 @@ class PALACE_Decoder(Decoder):
         printer("PALACE_Decoder","X_smi_y",X_smi_y.shape)
 
         X_smi_y = self.embedding(X_smi_y)
-        print(f"PALACE_Decoder X_smi_y 2 blk:{X_smi_y}")
         printer("PALACE_Decoder","X_smi_y",X_smi_y.shape,"embedding")
         # X_smi: from tensor([batch_size,num_steps]) -> tensor([batch_size,num_steps,feat_space_dim])
         X_smi_y = self.pos_encoding(X_smi_y * math.sqrt(self.feat_space_dim))
-        print(f"PALACE_Decoder X_smi_y 3 blk:{X_smi_y}")
         printer("PALACE_Decoder","X_smi_y",X_smi_y.shape,"pos_encoding")
 
         # encode protein to protein features
         # X_prot: from tensor([batch_size,45]) -> tensor([batch_size,45,prot_nota_len])
         X_prot = self.convT1d(X_prot.unsqueeze(2).unsqueeze(3)).squeeze(3)
-        print(f"PALACE_Decoder X_prot 2:{X_prot}")
         printer("PALACE_Decoder","X_prot",X_prot.shape,"convT1d")
         # X_prot: from tensor([batch_size,45,prot_nota_len]) -> tensor([batch_size,prot_nota_len,45])
         X_prot = X_prot.transpose(1,2)
-        print(f"PALACE_Decoder X_prot 3:{X_prot}")
         printer("PALACE_Decoder","X_prot",X_prot.shape,"transpose")
         # X_prot: from tensor([batch_size,prot_nota_len,45]) -> tensor([batch_size,prot_nota_len,feat_space_dim])
         X_prot = self.prot_encoding(X_prot)
-        print(f"PALACE_Decoder X_prot 4:{X_prot}")
         printer("PALACE_Decoder","X_prot",X_prot.shape,"prot_encoding")
 
         # _attention_weights: (2,num_blks)
         self._attention_weights = [[None] * len(self.blks) for _ in range (2)]
 
-        print(f"PALACE_Decoder X_prot before blk:{X_prot}")
-        print(f"PALACE_Decoder X_smi_y before blk:{X_smi_y}")
 
         # init state: [enc_outputs, enc_valid_lens, [None] * self.num_blks]
         # each decoder block, will take in same enc_outputs and enc_valid_lens
         for i, blk in enumerate(self.blks):
             #printer("PALACE_Decoder","state",state,i)
             X_smi_y, state = blk((X_prot,X_smi_y), state)
-            print(f"X_smi_y after blk:{X_smi_y}")
             # 解码器自注意力权重
             self._attention_weights[0][i] = blk.attention1.dot.attention_weights
             # “编码器－解码器”自注意力权重
             self._attention_weights[1][i] = blk.attention2.dot.attention_weights
-        print("X_smi_y:{}".format(X_smi_y))
         return self.softmax(self.dense(X_smi_y)), state
 
     @property
@@ -625,8 +626,6 @@ class PALACE(nn.Module):
         # X_prot: tensor([batch_size,45])
         # X_smi: tensor([batch_size,num_steps])
         X_prot, X_smi = enc_X
-        print(f"PALACE X_prot:{X_prot}")
-        print(f"PALACE X_smi:{X_smi}")
         # enc_outputs: tensor([batch_size,num_steps,feat_space_dim])
         enc_outputs = self.encoder(enc_X, enc_valid_lens, *args)
         printer('PALACE','enc_outputs',enc_outputs.shape)
@@ -643,7 +642,6 @@ class PALACE(nn.Module):
         # Y: [batch_size, num_steps-1]
         # added bos tok in begining of each sample of Y to get X_smi_y.
         # X_smi_y: [batch_size, num_steps]
-        print(f"PALACE dec_X:{dec_X}")
         return self.decoder(dec_X, dec_state)
 
 # ===============================Preprocess====================================
@@ -831,7 +829,8 @@ def prot_to_features_prose(prot : list, device: str):
     prot_features = []
     with torch.no_grad():
         alphabet = Uniprot21()
-        for seq in tqdm(prot):
+        #for seq in tqdm(prot):
+        for seq in prot:
             #print('featuring: {}'.format(seq))
             seq = seq.encode() # to bytes
             if len(seq) == 0:
@@ -1107,7 +1106,7 @@ def train_PALACE(piece,net, data_iter,optimizer, num_epochs, tgt_vocab,
         metric = Accumulator(2)  # 训练损失总和，词元数量
         #assert trained_model_dir is not None, "trained model is not available."
         data_iter.sampler.set_epoch(epoch)
-        for batch in data_iter:
+        for i,batch in enumerate(data_iter):
             optimizer.zero_grad()
             X_prot, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
             # bos: torch.Size([batch_size, 1])
@@ -1123,19 +1122,14 @@ def train_PALACE(piece,net, data_iter,optimizer, num_epochs, tgt_vocab,
             Y_hat, _ = net((X_prot, X), (X_prot,dec_input), X_valid_len)
             l = loss(Y_hat, Y, Y_valid_len)
             l.sum().backward() # 损失函数的标量进行“反向传播”
-            #print('X:{}'.format(X))
-            #print('X_prot:{}'.format(X_prot))
-            #print('dec_input:{}'.format(dec_input))
-            #print('X_valid_len:{}'.format(X_valid_len))
-            print('Y_hat:{}\nY:{}\nY_valid_len:{}'.format(Y_hat,Y,Y_valid_len))
-            print('l: {}\nl.sum():{}'.format(l,l.sum()))
             grad_clipping(net, 1)
             num_tokens = Y_valid_len.sum()
             optimizer.step()
             with torch.no_grad():
                 metric.add(l.sum(), num_tokens)
-        with open(loss_log,'a') as o:
-            o.write(f'piece:{piece}\tepoch:{epoch}\tloss:{metric[0] / metric[1]:.3f}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n')
+            if i % 100 == 0:
+                with open(loss_log,'a') as o:
+                    o.write(f'piece:{piece}\tepoch:{epoch}\tloss:{metric[0] / metric[1]:.3f}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n')
     dist.barrier()
 # ==============================Prediction=====================================
 #%% Prediction
