@@ -123,7 +123,7 @@ class ProteinEncoding(nn.Module):
     def __init__(self,feat_space_dim, prot_MLP, dropout, **kwargs):
         super(ProteinEncoding, self).__init__(**kwargs)
         printer("ProteinEncoding","prot_MLP",prot_MLP,"__init__")
-        self.dense = nn.Linear(45, feat_space_dim)
+        self.dense = nn.Linear(feat_space_dim, feat_space_dim)
         self.relu = nn.ReLU()
         self.ln = nn.LayerNorm(feat_space_dim)
         self.dropout = nn.Dropout(dropout)
@@ -353,7 +353,7 @@ class PALACE_Encoder(Encoder):
 
         # here implement ProteinEncoding
         # 45 is the same of protein feature dimension
-        self.convT1d = nn.ConvTranspose1d(in_channels=45, out_channels=45, kernel_size=(prot_nota_len,1),stride=1)
+        self.convT1d = nn.ConvTranspose1d(in_channels=feat_space_dim, out_channels=feat_space_dim, kernel_size=(prot_nota_len,1),stride=1)
         self.prot_encoding = ProteinEncoding(feat_space_dim,prot_MLP, dropout)
 
         # encoder block
@@ -383,7 +383,8 @@ class PALACE_Encoder(Encoder):
         printer("PALACE_Encoder","self.convT1d.device",next(self.convT1d.parameters()).device)
 
         # encode protein to protein features
-        # X_prot: from tensor([batch_size,45]) -> tensor([batch_size,45,prot_nota_len])
+        # X_prot_feat: from tensor([batch_size,45]) -> tensor([batch_size,45,prot_nota_len])
+        # X_prott: from tensor([batch_size,45]) -> tensor([batch_size,45,prot_nota_len])
         X_prot = X_prot.unsqueeze(2).unsqueeze(3)
         X_prot = self.convT1d(X_prot).squeeze(3)
         printer("PALACE_Encoder","X_prot",X_prot.shape,"convT1d")
@@ -546,7 +547,7 @@ class PALACE_Decoder(Decoder):
 
         # here implement ProteinEncoding
         # 45 is the same of protein feature dimension
-        self.convT1d = nn.ConvTranspose1d(in_channels=45, out_channels=45, kernel_size=(prot_nota_len,1),stride=1)
+        self.convT1d = nn.ConvTranspose1d(in_channels=feat_space_dim, out_channels=feat_space_dim, kernel_size=(prot_nota_len,1),stride=1)
         self.prot_encoding = ProteinEncoding(feat_space_dim,prot_MLP, dropout)
 
         self.blks = nn.Sequential()
@@ -598,7 +599,6 @@ class PALACE_Decoder(Decoder):
         # _attention_weights: (2,num_blks)
         self._attention_weights = [[None] * len(self.blks) for _ in range (2)]
 
-
         # init state: [enc_outputs, enc_valid_lens, [None] * self.num_blks]
         # each decoder block, will take in same enc_outputs and enc_valid_lens
         for i, blk in enumerate(self.blks):
@@ -614,18 +614,52 @@ class PALACE_Decoder(Decoder):
     def attention_weights(self):
         return self._attention_weights
 
+
+class PALACE_prot_net(nn.Module):
+    """
+    prot_net
+    """
+    def __init__(self, prot_vocab_size, feat_space_dim, prot_nota_len, dropout, **kwargs):
+        super(PALACE_prot_net, self).__init__(**kwargs)
+
+        self.embedding = nn.Embedding(prot_vocab_size, feat_space_dim)
+        self.dense1 = nn.Linear(feat_space_dim, 128)
+        self.relu1 = nn.ReLU()
+        self.dropout = nn.Dropout(dropout)
+        self.dense2 = nn.Linear(128,feat_space_dim)
+        self.relu2 = nn.ReLU()
+
+    def forward(self, X, valid_lens, *args):
+        # X: tensor([batch_size,2500])
+        # valid_lens: tensor([N])
+        X = self.embedding(X)
+        # X: tensor([batch_size,2500,feat_space_dim])
+        valid_lens = valid_lens.cpu().numpy()
+        # paddings set to zero
+        for i,v in enumerate(valid_lens):
+            X[i][v:] = 0
+        # sum to feat_space_dim, eliminate protein lens varies
+        X = X.sum(dim=1)
+        # X output: [batch_size,prot_nota_len]
+        return self.relu2(self.dense2(self.dropout(self.relu1(self.dense1(X)))))
+
 class PALACE(nn.Module):
     """编码器-解码器架构的基类
     """
-    def __init__(self, encoder, decoder, **kwargs):
+    def __init__(self, encoder, decoder,prot_net, **kwargs):
         super(PALACE, self).__init__(**kwargs)
         self.encoder = encoder
         self.decoder = decoder
+        self.prot_net = prot_net
 
-    def forward(self, enc_X, dec_X, enc_valid_lens, *args):
-        # X_prot: tensor([batch_size,45])
+    def forward(self, X, dec_X, valid_lens, *args):
+        # X_prot: tensor([batch_size,2500])
         # X_smi: tensor([batch_size,num_steps])
-        X_prot, X_smi = enc_X
+        X_prot, X_smi = X
+        prot_valid_lens,enc_valid_lens = valid_lens
+        # X_prot after prot_net: tensor([batch_size,prot_nota_len])
+        X_prot_feat = self.prot_net(X_prot,prot_valid_lens)
+        enc_X = (X_prot_feat,X_smi)
         # enc_outputs: tensor([batch_size,num_steps,feat_space_dim])
         enc_outputs = self.encoder(enc_X, enc_valid_lens, *args)
         printer('PALACE','enc_outputs',enc_outputs.shape)
@@ -642,6 +676,8 @@ class PALACE(nn.Module):
         # Y: [batch_size, num_steps-1]
         # added bos tok in begining of each sample of Y to get X_smi_y.
         # X_smi_y: [batch_size, num_steps]
+        _, X_smi_y = dec_X
+        dec_X = (X_prot_feat,X_smi_y)
         return self.decoder(dec_X, dec_state)
 
 # ===============================Preprocess====================================
@@ -715,6 +751,29 @@ def retrieve_vocab(vocab_dir):
     """
     with open(vocab_dir,'rb') as r:
         return pickle.load(r)
+
+def creat_prot_vocab(file_path = './prot_models/embedding/vocab.txt'):
+    """
+    file_path = './prot_models/embedding/vocab.txt'
+    """
+# =============================================================================
+#     import io
+#     from torchtext.vocab import build_vocab_from_iterator
+#
+#     def yield_tokens(file_path):
+#         with io.open(file_path, encoding = 'utf-8') as f:
+#             for line in f:
+#                 yield line.strip().split()
+#     vocab = build_vocab_from_iterator(yield_tokens(file_path), specials=["<unk>",'<pad>'])
+#     vocab.set_default_index(vocab["<unk>"])
+#     return vocab
+# =============================================================================
+    with open(file_path,'r') as r:
+        source = [[x.strip()] for x in r.readlines()]
+    vocab = Vocab(source, min_freq=0,reserved_tokens=['<pad>'])
+    vocab
+    save_vocab(vocab,r'./vocab/prot_vocab.pkl')
+    return vocab
 
 def prot_to_features_bert(prot : list, trained_model_dir: str, device: str, prot_read_batch_size: int):
     """
@@ -862,30 +921,38 @@ def read_data(data_dir, device, prot_col = 2, src_col = 3, tgt_col = 4, sep = '\
     prot = []
     source = []
     target = []
+    give_up_pre_trained = True
     with open(data_dir,'r') as r:
         for line in r:
             line_split = line.strip().split(sep)
-            prot.append(line_split[prot_col])
+            if not give_up_pre_trained:
+                prot.append(line_split[prot_col])
+            else: prot.append(list(line_split[prot_col].upper()))
             source.append(line_split[src_col].split(' '))
             target.append(line_split[tgt_col].split(' '))
     # let's say in total N samples
     # prot: [prot_seq_sample1,prot_seq_sample2,...,prot_seq_sampleN]
     # source: [[tok1,tok2...],[tok3,tok2,...],...until_N]
     # target: simliar as source
-    prot_features = prot_to_features_prose(prot, device)
-    printer('read_data','prot_features',prot_features.shape,'prot_to_features')
-    # prot_feature: torch.Size([N, 45])
-    # 45 is the feature dimension for each amino acid
-    # prot_features compress all amino acids to feature direction
 
-    # truncate
-    if len(source) > len(prot_features):
-        source = source[:len(prot_features)]
-        target = target[:len(prot_features)]
+    # due to speed, give using pre-trained protein model
+    if not give_up_pre_trained:
+        prot_features = prot_to_features_prose(prot, device)
+        printer('read_data','prot_features',prot_features.shape,'prot_to_features')
 
-    return prot_features, source, target
+        # prot_feature: torch.Size([N, 45])
+        # 45 is the feature dimension for each amino acid
+        # prot_features compress all amino acids to feature direction
 
-def build_array_nmt(lines, vocab, num_steps):
+        # truncate
+        if len(source) > len(prot_features):
+            source = source[:len(prot_features)]
+            target = target[:len(prot_features)]
+
+        return prot_features, source, target
+    return prot,source,target
+
+def build_array_nmt(lines, vocab, num_steps, add_eos = True):
     """将机器翻译的文本序列转换成小批量
     """
     def truncate_pad(line, num_steps, padding_token):
@@ -896,7 +963,8 @@ def build_array_nmt(lines, vocab, num_steps):
         return line + [padding_token] * (num_steps - len(line))  # 填充
 
     lines = [vocab[l] for l in lines] # tokens to idx
-    lines = [l + [vocab['<eos>']] for l in lines] # add idx of <eos> to each line
+    if add_eos:
+        lines = [l + [vocab['<eos>']] for l in lines] # add idx of <eos> to each line
     # truncate or padding using idx of <pad> to be num_steps length
     array = torch.tensor([truncate_pad(
         l, num_steps, vocab['<pad>']) for l in lines])
@@ -913,12 +981,14 @@ def load_data(rank, world_size,data_dir,batch_size, num_steps, device, vocab_dir
     # prot_feature: torch.Size([N, 45])
     # prot: [prot_seq_sample1,prot_seq_sample2,...,prot_seq_sampleN]
     # source: [[tok1,tok2...],[tok3,tok2,...],...until_N]
-    prot_features, source, target = read_data(data_dir, device)
+    # prot_features, source, target = read_data(data_dir, device)
+    prot, source, target = read_data(data_dir, device)
 
     if vocab_dir:
         assert os.path.exists(vocab_dir[0]) and os.path.exists(vocab_dir[1]),"cannot find available vocab"
         src_vocab = retrieve_vocab(vocab_dir[0])
         tgt_vocab = retrieve_vocab(vocab_dir[1])
+        prot_vocab = retrieve_vocab(vocab_dir[2])
     else:
         src_vocab = Vocab(source, min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
         tgt_vocab = Vocab(target, min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
@@ -932,9 +1002,11 @@ def load_data(rank, world_size,data_dir,batch_size, num_steps, device, vocab_dir
     # tgt_array and tgt_valid_len are similar to src
     src_array, src_valid_len = build_array_nmt(source, src_vocab, num_steps)
     tgt_array, tgt_valid_len = build_array_nmt(target, tgt_vocab, num_steps)
+    prot_array, prot_valid_len = build_array_nmt(prot, prot_vocab, 2500, add_eos = False) # maxium prot is 2500
 
     # the first dim of the following are all N (total number of samples)
-    data_arrays = (prot_features, src_array, src_valid_len, tgt_array, tgt_valid_len)
+    # data_arrays = (prot_features, src_array, src_valid_len, tgt_array, tgt_valid_len)
+    data_arrays = (prot_array, prot_valid_len, src_array, src_valid_len, tgt_array, tgt_valid_len)
 
     def load_array(rank, world_size,data_arrays, batch_size,pin_memory=False, num_workers=0):
         """构造一个PyTorch数据迭代器
@@ -948,7 +1020,7 @@ def load_data(rank, world_size,data_dir,batch_size, num_steps, device, vocab_dir
 
     data_iter = load_array(rank, world_size,data_arrays, batch_size)
 
-    return data_iter, src_vocab, tgt_vocab
+    return data_iter, src_vocab, tgt_vocab, prot_vocab
 
 
 # =================================GPUs=======================================
@@ -1005,7 +1077,9 @@ def assign_gpu(rank):
 def setup_gpu(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    # nccl for linux, gloo for windows
+    # dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    dist.init_process_group("gloo", rank=rank, world_size=world_size)
 # =================================Utils=======================================
 #%% Utils
 class Accumulator:
@@ -1108,7 +1182,7 @@ def train_PALACE(piece,net, data_iter,optimizer, num_epochs, tgt_vocab,
         data_iter.sampler.set_epoch(epoch)
         for i,batch in enumerate(data_iter):
             optimizer.zero_grad()
-            X_prot, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
+            X_prot,prot_valid_len, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
             # bos: torch.Size([batch_size, 1])
             bos = torch.tensor([tgt_vocab['<bos>']] * Y.shape[0],device=device).reshape(-1, 1)
 
@@ -1119,7 +1193,7 @@ def train_PALACE(piece,net, data_iter,optimizer, num_epochs, tgt_vocab,
             printer("train_PALACE:","X_prot",X_prot.shape)
             printer("train_PALACE:","X",X.shape)
 
-            Y_hat, _ = net((X_prot, X), (X_prot,dec_input), X_valid_len)
+            Y_hat, _ = net((X_prot, X), (X_prot,dec_input), (prot_valid_len,X_valid_len))
             l = loss(Y_hat, Y, Y_valid_len)
             l.sum().backward() # 损失函数的标量进行“反向传播”
             grad_clipping(net, 1)
@@ -1127,9 +1201,9 @@ def train_PALACE(piece,net, data_iter,optimizer, num_epochs, tgt_vocab,
             optimizer.step()
             with torch.no_grad():
                 metric.add(l.sum(), num_tokens)
-            if i % 100 == 0:
+            if i % 1000 == 0:
                 with open(loss_log,'a') as o:
-                    o.write(f'piece:{piece}\tepoch:{epoch}\tloss:{metric[0] / metric[1]:.3f}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n')
+                    o.write(f'piece:{piece}\tepoch:{epoch}\tloss:{metric[0] / metric[1]:.8f}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n')
     dist.barrier()
 # ==============================Prediction=====================================
 #%% Prediction

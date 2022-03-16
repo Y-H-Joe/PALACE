@@ -1,0 +1,16 @@
+piece:0	epoch:0	loss:5.11139196	tokens/sec:1403.7	device: cuda:0
+piece:0	epoch:0	loss:5.11137211	tokens/sec:1189.7	device: cuda:1
+piece:0	epoch:0	loss:5.11194942	tokens/sec:1706.9	device: cuda:3
+piece:0	epoch:0	loss:5.11227650	tokens/sec:1452.7	device: cuda:2
+piece:0	epoch:0	loss:5.11170347	tokens/sec:1579.4	device: cuda:0
+piece:0	epoch:0	loss:5.11173077	tokens/sec:1499.7	device: cuda:1
+piece:0	epoch:0	loss:5.11172415	tokens/sec:1492.7	device: cuda:3
+piece:0	epoch:0	loss:5.11171167	tokens/sec:1584.5	device: cuda:2
+piece:1	epoch:0	loss:5.11187292	tokens/sec:1045.3	device: cuda:0
+piece:1	epoch:0	loss:5.11157351	tokens/sec:1395.9	device: cuda:2
+piece:1	epoch:0	loss:5.11161156	tokens/sec:924.2	device: cuda:3
+piece:1	epoch:0	loss:5.11160305	tokens/sec:1892.3	device: cuda:1
+piece:1	epoch:0	loss:5.11171270	tokens/sec:1588.9	device: cuda:0
+piece:1	epoch:0	loss:5.11172350	tokens/sec:1503.0	device: cuda:1
+piece:1	epoch:0	loss:5.11173559	tokens/sec:1500.8	device: cuda:3
+piece:1	epoch:0	loss:5.11171824	tokens/sec:1579.2	device: cuda:2
