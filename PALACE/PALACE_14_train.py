@@ -44,7 +44,7 @@ def main(rank, world_size,piece,model_id):
             self.print_shape = False
             # each smi_tok or prot_feat will be projected to feat_space_dim
             self.feat_space_dim = 256
-             # notation protein length (any length of protein will be projected to fix length)
+            # notation protein length (any length of protein will be projected to fix length)
             self.prot_nota_len = 1024
             # number of encoder/decoder blocks
             self.num_blks = 14
@@ -140,6 +140,7 @@ def main(rank, world_size,piece,model_id):
     # clean up
     logging.shutdown()
     dist.destroy_process_group()
+    printer("=======================PALACE: finished! : {}s=======================".format(time.time() - tp1),print_=True)
 
 if __name__ == '__main__':
     piece = int(sys.argv[1])

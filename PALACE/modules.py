@@ -623,10 +623,10 @@ class PALACE_prot_net(nn.Module):
         super(PALACE_prot_net, self).__init__(**kwargs)
 
         self.embedding = nn.Embedding(prot_vocab_size, feat_space_dim)
-        self.dense1 = nn.Linear(feat_space_dim, 128)
+        self.dense1 = nn.Linear(feat_space_dim, feat_space_dim)
         self.relu1 = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
-        self.dense2 = nn.Linear(128,feat_space_dim)
+        self.dense2 = nn.Linear(feat_space_dim,feat_space_dim)
         self.relu2 = nn.ReLU()
 
     def forward(self, X, valid_lens, *args):

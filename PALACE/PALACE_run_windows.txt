@@ -1,4 +1,4 @@
-for ($num = 0 ; $num -le 12 ; $num++){
+for ($num = 1 ; $num -le 12 ; $num++){
 python PALACE_14_train.py $num
 Start-Sleep -s 600
 }
