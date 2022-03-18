@@ -872,7 +872,8 @@ def read_data_nmt():
     """Load the English-French dataset.
 
     Defined in :numref:`sec_machine_translation`"""
-    data_dir = d2l.download_extract('fra-eng')
+    # data_dir = d2l.download_extract('fra-eng')
+    data_dir = r"C:\CurrentProjects\AI+yao\metabolism\microbiomeMetabolism\network_prepare\data"
     with open(os.path.join(data_dir, 'fra.txt'), 'r', encoding='utf-8') as f:
         return f.read()
 
@@ -1073,7 +1074,7 @@ def train_seq2seq(net, data_iter, lr, num_epochs, tgt_vocab, device):
             optimizer.step()
             with torch.no_grad():
                 metric.add(l.sum(), num_tokens)
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % 100 == 0:
             animator.add(epoch + 1, (metric[0] / metric[1],))
     print(f'loss {metric[0] / metric[1]:.3f}, {metric[1] / timer.stop():.1f} '
           f'tokens/sec on {str(device)}')

@@ -171,7 +171,7 @@ class TransformerDecoder(d2l.AttentionDecoder):
 
 num_hiddens, num_layers, dropout, batch_size, num_steps = 32, 4, 0.1, 64, 10
 
-lr, num_epochs, device = 0.005, 200, d2l.try_gpu()
+lr, num_epochs, device = 0.005, 2000, d2l.try_gpu()
 
 ffn_num_input, ffn_num_hiddens, num_heads = 32, 64, 4
 

@@ -110,9 +110,9 @@ class ProteinEncoding_large(nn.Module):
         super(ProteinEncoding_large, self).__init__(**kwargs)
         printer("ProteinEncoding","prot_MLP",prot_MLP,"__init__")
         self.dense1 = nn.Linear(45, prot_MLP[0])
-        self.relu1 = nn.ReLU()
+        self.relu1 = nn.LeakyReLU()
         self.dense2 = nn.Linear(prot_MLP[0], feat_space_dim)
-        self.relu2 = nn.ReLU()
+        self.relu2 = nn.LeakyReLU()
         self.ln = nn.LayerNorm(feat_space_dim)
         self.dropout = nn.Dropout(dropout)
 
@@ -124,7 +124,7 @@ class ProteinEncoding(nn.Module):
         super(ProteinEncoding, self).__init__(**kwargs)
         printer("ProteinEncoding","prot_MLP",prot_MLP,"__init__")
         self.dense = nn.Linear(feat_space_dim, feat_space_dim)
-        self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU()
         self.ln = nn.LayerNorm(feat_space_dim)
         self.dropout = nn.Dropout(dropout)
 
@@ -216,8 +216,8 @@ class MultiHeadExternalMixAttention(nn.Module):
 
         # nn.Linear can accept N-D tensor
         # ref https://stackoverflow.com/questions/58587057/multi-dimensional-inputs-in-pytorch-linear-method
-        self.W_mix_k = nn.Linear(prot_nota_len,feat_space_dim)
-        self.W_mix_q = nn.Linear(prot_nota_len,feat_space_dim)
+        self.W_mix_k = nn.Linear(prot_nota_len,feat_space_dim, bias=bias)
+        self.W_mix_q = nn.Linear(prot_nota_len,feat_space_dim, bias=bias)
         self.W_k = nn.Linear(feat_space_dim, feat_space_dim, bias=bias)
         self.W_q = nn.Linear(feat_space_dim, feat_space_dim, bias=bias)
         self.W_v = nn.Linear(feat_space_dim, feat_space_dim, bias=bias)
@@ -282,7 +282,7 @@ class PositionWiseFFN(nn.Module):
     def __init__(self, feat_space_dim, ffn_num_hiddens, **kwargs):
         super(PositionWiseFFN, self).__init__(**kwargs)
         self.dense1 = nn.Linear(feat_space_dim, ffn_num_hiddens)
-        self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU()
         self.dense2 = nn.Linear(ffn_num_hiddens, feat_space_dim)
 
     def forward(self, X):
@@ -313,7 +313,7 @@ class EncoderBlock(nn.Module):
         self.addnorm1 = AddNorm(feat_space_dim, dropout)
         self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
         self.addnorm2 = AddNorm(feat_space_dim, dropout)
-        self.addnorm3 = AddNorm(feat_space_dim, dropout)
+        #self.addnorm3 = AddNorm(feat_space_dim, dropout)
 
     def forward(self, X, valid_lens):
         # X_prot: tensor([batch_size,prot_nota_len,feat_space_dim])
@@ -331,11 +331,8 @@ class EncoderBlock(nn.Module):
         X = self.addnorm1(X, X_smi)
         printer("EncoderBlock","X",X.shape,"AddNorm")
 
-        # X: tensor([batch_size,num_steps,feat_space_dim])
-        X = self.ffn(X)
-        printer("EncoderBlock","X",X.shape,"PositionWiseFFN")
-
-        return self.addnorm3(self.addnorm2(X, X),X_smi)
+        # return self.addnorm3(self.addnorm2(X, X),X_smi)
+        return self.addnorm2(self.ffn(X), X)
 
 class PALACE_Encoder(Encoder):
     """
@@ -474,7 +471,7 @@ class DecoderBlock(nn.Module):
         self.addnorm2 = AddNorm(feat_space_dim, dropout)
         self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
         self.addnorm3 = AddNorm(feat_space_dim, dropout)
-        self.addnorm4 = AddNorm(feat_space_dim, dropout)
+        #self.addnorm4 = AddNorm(feat_space_dim, dropout)
 
     def forward(self, X, state):
         # init state: (enc_outputs, enc_valid_lens, [None] * self.num_blks])
@@ -532,7 +529,8 @@ class DecoderBlock(nn.Module):
         printer("DecoderBlock","X_smi_y3",X_smi_y3.shape,"second attention")
         X_smi_y3 = self.addnorm2(X_smi_y2, X_smi_y3)
 
-        return self.addnorm4(self.addnorm3(X_smi_y3, self.ffn(X_smi_y3)),X_smi_y), state
+        # return self.addnorm4(self.addnorm3(X_smi_y3, self.ffn(X_smi_y3)),X_smi_y), state
+        return self.addnorm3(X_smi_y3, self.ffn(X_smi_y3)), state
 
 class PALACE_Decoder(Decoder):
     def __init__(self, vocab_size, prot_nota_len, feat_space_dim, ffn_num_hiddens, num_heads,
@@ -624,10 +622,10 @@ class PALACE_prot_net(nn.Module):
 
         self.embedding = nn.Embedding(prot_vocab_size, feat_space_dim)
         self.dense1 = nn.Linear(feat_space_dim, feat_space_dim)
-        self.relu1 = nn.ReLU()
+        self.relu1 = nn.LeakyReLU()
         self.dropout = nn.Dropout(dropout)
         self.dense2 = nn.Linear(feat_space_dim,feat_space_dim)
-        self.relu2 = nn.ReLU()
+        self.relu2 = nn.LeakyReLU()
 
     def forward(self, X, valid_lens, *args):
         # X: tensor([batch_size,2500])
@@ -1147,6 +1145,10 @@ def printer(function,instance = None,content = None ,after = None, print_=False,
             #print(time.localtime())
     except Exception as e: print(e)
 
+def model_compare(dict1,dict2):
+    for k,v in dict1.items():
+        if torch.equal(dict1[k], dict2[k]):
+            print(k)
 
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
@@ -1161,15 +1163,21 @@ reduce_mean = lambda x, *args, **kwargs: x.mean(*args, **kwargs)
 
 # ===============================Training======================================
 #%% Training
-def xavier_init_weights(m):
-    if type(m) == nn.Linear:
-        nn.init.xavier_uniform_(m.weight)
-    if type(m) == nn.GRU:
-        for param in m._flat_weights_names:
-            if "weight" in param:
-                nn.init.xavier_uniform_(m._parameters[param])
+def init_weights(m,use = 'kaiming_uniform_'):
+    if use == 'xavier_normal_':
+        if type(m) == nn.Linear:
+            nn.init.xavier_normal_(m.weight)
+    if use == 'xavier_uniform_':
+        if type(m) == nn.Linear:
+            nn.init.xavier_uniform_(m.weight)
+    if use == 'kaiming_uniform_':
+        if type(m) == nn.Linear:
+            nn.init.kaiming_uniform_(m.weight,mode='fan_in', nonlinearity='relu')
+    if use == 'orthogonal_':
+        if type(m) == nn.Linear:
+            nn.init.orthogonal_(m.weight)
 
-def train_PALACE(piece,net, data_iter,optimizer, num_epochs, tgt_vocab,
+def train_PALACE(piece,net, data_iter,optimizer,scheduler, num_epochs, tgt_vocab,
                  device,loss_log):
     """训练序列到序列模型
     """
@@ -1200,10 +1208,14 @@ def train_PALACE(piece,net, data_iter,optimizer, num_epochs, tgt_vocab,
             num_tokens = Y_valid_len.sum()
             optimizer.step()
             with torch.no_grad():
-                metric.add(l.sum(), num_tokens)
-            if i % 1000 == 0:
-                with open(loss_log,'a') as o:
-                    o.write(f'piece:{piece}\tepoch:{epoch}\tloss:{metric[0] / metric[1]:.8f}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n')
+                loss_sum = l.sum()
+                metric.add(loss_sum, num_tokens)
+            #if i % 1000 == 0:
+        scheduler.step(loss_sum)
+        #scheduler.step()
+        if epoch % 30 == 0: print(f"learning rate: {optimizer.param_groups[0]['lr']}")
+        with open(loss_log,'a') as o:
+            o.write(f'piece:{piece}\tepoch:{epoch}\tloss:{metric[0] / metric[1]:.8f}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n')
     dist.barrier()
 # ==============================Prediction=====================================
 #%% Prediction

@@ -31,7 +31,7 @@ import torch.distributed as dist
 
 from modules import (printer,PALACE,logging,save_on_master,train_PALACE,
                     set_random_seed,load_data,PALACE_Encoder,PALACE_Decoder,
-                    assign_gpu,xavier_init_weights,setup_gpu,PALACE_prot_net )
+                    assign_gpu,init_weights,setup_gpu,PALACE_prot_net )
 
 
 def main(rank, world_size,piece,model_id):
@@ -43,15 +43,15 @@ def main(rank, world_size,piece,model_id):
             # True or False
             self.print_shape = False
             # each smi_tok or prot_feat will be projected to feat_space_dim
-            self.feat_space_dim = 256
+            self.feat_space_dim = 4 #256
             # notation protein length (any length of protein will be projected to fix length)
-            self.prot_nota_len = 1024
+            self.prot_nota_len = 2 # 1024
             # number of encoder/decoder blocks
-            self.num_blks = 14
+            self.num_blks = 1
             # dropout ratio for AddNorm,PositionalEncoding,DotProductMixAttention,ProteinEncoding
             self.dropout = 0.2
             # number of samples using per train
-            self.batch_size = 4
+            self.batch_size = 64 # 5
             # number of protein reading when trans protein to features using pretrained BERT
             #self.prot_read_batch_size = 6
             # time steps/window size,ref d2l 8.1 and 8.3
@@ -59,13 +59,13 @@ def main(rank, world_size,piece,model_id):
             # learning rate
             self.lr = 0.05
             # number of epochs
-            self.num_epochs = 1
+            self.num_epochs =1000
             # feed forward intermidiate number of hiddens
             self.ffn_num_hiddens = 64
             # number of heads
-            self.num_heads = 8
+            self.num_heads = 2 # 8
             # protein encoding features feed forward
-            self.prot_MLP = [128]
+            self.prot_MLP = [5] #128
             # multi-head attention will divide feat_space_num by num_heads
 
     args = Args()
@@ -78,7 +78,7 @@ def main(rank, world_size,piece,model_id):
 
 # ===============================Training======================================
 #%% Training
-    loss_log = 'PALACE.loss.log'
+    loss_log = 'PALACE.14.loss.log'
     data_dir = './data/PALACE_train.shuf.batch1.tsv_{0:04}'.format(piece)
     #data_dir = './data/fake_sample_for_vocab.txt'
 
@@ -104,7 +104,10 @@ def main(rank, world_size,piece,model_id):
         len(tgt_vocab), args.prot_nota_len, args.feat_space_dim, args.ffn_num_hiddens, args.num_heads, args.num_blks, args.dropout, args.prot_MLP)
     prot_net = PALACE_prot_net(len(prot_vocab), args.feat_space_dim, args.prot_nota_len, args.dropout)
     net = PALACE(encoder,decoder,prot_net)
-    optimizer = torch.optim.Adam(net.parameters(), lr=args.lr)
+    # optimizer = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optimizer = torch.optim.SGD(net.parameters(), args.lr,momentum=0.01)
+    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,'min',patience=1000)
     tp4 = time.time()
     printer("=======================building model: {}s...=======================".format(tp4 - tp3),print_=True)
 
@@ -118,21 +121,29 @@ def main(rank, world_size,piece,model_id):
 
     printer("=======================PALACE: training...=======================",print_=True)
     if first_train:
-        net.apply(xavier_init_weights)
+        net.apply(init_weights)
+        if True:
+            init = {
+            'net': net_without_ddp.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'scheduler': scheduler.state_dict()}
+            save_on_master(init, f'./PALACE_models/init_{model_id}.pt')
     else:
         checkpoint_path = './PALACE_models/checkpoint_{}.pt'.format(model_id)
         checkpoint = torch.load(checkpoint_path, map_location='cpu')
         optimizer.load_state_dict(checkpoint['optimizer'])
         net_without_ddp.load_state_dict(checkpoint['net'])
+        scheduler.load_state_dict(checkpoint['scheduler'])
     tp5 = time.time()
-    train_PALACE(piece, net, data_iter, optimizer, args.num_epochs, tgt_vocab, device, loss_log)
+    train_PALACE(piece, net, data_iter, optimizer,scheduler, args.num_epochs, tgt_vocab, device, loss_log)
     tp6 = time.time()
     printer("=======================training: {}s...=======================".format(tp6 - tp5),print_=True)
 
     printer("=======================PALACE: saving model...=======================",print_=True)
     checkpoint = {
         'net': net_without_ddp.state_dict(),
-        'optimizer': optimizer.state_dict()}
+        'optimizer': optimizer.state_dict(),
+        'scheduler': scheduler.state_dict()}
 
     save_on_master(checkpoint, './PALACE_models/PALACE_{}_piece_{}.pt'.format(model_id,piece))
     save_on_master(checkpoint, f'./PALACE_models/checkpoint_{model_id}.pt')
@@ -142,6 +153,11 @@ def main(rank, world_size,piece,model_id):
     dist.destroy_process_group()
     printer("=======================PALACE: finished! : {}s=======================".format(time.time() - tp1),print_=True)
 
+    if True:
+        from modules import model_compare
+        dict1 = torch.load(f'./PALACE_models/init_{model_id}.pt', map_location='cpu')['net']
+        dict2 = torch.load('./PALACE_models/checkpoint_{}.pt'.format(model_id), map_location='cpu')['net']
+        model_compare(dict1,dict2)
 if __name__ == '__main__':
     piece = int(sys.argv[1])
     # piece = 0

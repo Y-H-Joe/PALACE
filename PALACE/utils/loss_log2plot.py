@@ -18,13 +18,22 @@ Contact: yihangjoe@foxmail.com
 import pandas as pd
 import matplotlib.pyplot as plt
 
+world_size = 1
 def split_(str_):
     return str_.split(':')[1]
-loss = pd.read_csv(r'../PALACE.loss.18.log',sep='\t',header=None)[2].apply(split_).\
-                    astype(float).values.reshape((-1,4)).mean(axis=1).tolist()
+loss = pd.read_csv(r'../PALACE.14.loss.log',sep='\t',header=None)[2].apply(split_).\
+                    astype(float).values.reshape((-1,world_size)).mean(axis=1).tolist()
 
-plt.bar(list(range(len(loss))), loss, label="training loss")
-plt.xlabel("time points")
-plt.ylabel("loss")
-plt.ylim(5.111,5.112)
+
+#折线图
+x = list(range(len(loss)))#点的横坐标
+y = loss #线1的纵坐标
+#k2 = [0.8988,0.9334,0.9435,0.9407,0.9453,0.9453]#线2的纵坐标
+plt.plot(x,y,'s-',color = 'r',label="loss")#s-:方形
+#plt.plot(x,k2,'o-',color = 'g',label="CNN-RLSTM")#o-:圆形
+plt.xlabel("epoch")#横坐标名字
+plt.ylabel("loss")#纵坐标名字
+plt.legend(loc = "best")#图例
+plt.show()
+
 #plt.savefig("data.png")
