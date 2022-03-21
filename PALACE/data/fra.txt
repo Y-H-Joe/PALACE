@@ -1,0 +1,446 @@
+Go.	Va !
+Hi.	Salut !
+Run!	Cours !
+Run!	Courez !
+Who?	Qui ?
+Wow!	Ça alors !
+Fire!	Au feu !
+Help!	À l'aide !
+Jump.	Saute.
+Stop!	Ça suffit !
+Stop!	Stop !
+Stop!	Arrête-toi !
+Wait!	Attends !
+Wait!	Attendez !
+Go on.	Poursuis.
+Go on.	Continuez.
+Go on.	Poursuivez.
+Hello!	Bonjour !
+Hello!	Salut !
+I see.	Je comprends.
+I try.	J'essaye.
+I won!	J'ai gagné !
+I won!	Je l'ai emporté !
+I won.	J’ai gagné.
+Oh no!	Oh non !
+Attack!	Attaque !
+Attack!	Attaquez !
+Cheers!	Santé !
+Cheers!	À votre santé !
+Cheers!	Merci !
+Cheers!	Tchin-tchin !
+Get up.	Lève-toi.
+Go now.	Va, maintenant.
+Go now.	Allez-y maintenant.
+Go now.	Vas-y maintenant.
+Got it!	J'ai pigé !
+Got it!	Compris !
+Got it?	Pigé ?
+Got it?	Compris ?
+Got it?	T'as capté ?
+Hop in.	Monte.
+Hop in.	Montez.
+Hug me.	Serre-moi dans tes bras !
+Hug me.	Serrez-moi dans vos bras !
+I fell.	Je suis tombée.
+I fell.	Je suis tombé.
+I know.	Je sais.
+I left.	Je suis parti.
+I left.	Je suis partie.
+I lost.	J'ai perdu.
+I paid.	J’ai payé.
+I'm 19.	J'ai 19 ans.
+I'm OK.	Je vais bien.
+I'm OK.	Ça va.
+Listen.	Écoutez !
+No way!	C'est pas possible !
+No way!	Impossible !
+No way!	En aucun cas.
+No way!	Sans façons !
+No way!	C'est hors de question !
+No way!	Il n'en est pas question !
+No way!	C'est exclu !
+No way!	En aucune manière !
+No way!	Hors de question !
+Really?	Vraiment ?
+Really?	Vrai ?
+Really?	Ah bon ?
+Thanks.	Merci !
+We try.	On essaye.
+We won.	Nous avons gagné.
+We won.	Nous gagnâmes.
+We won.	Nous l'avons emporté.
+We won.	Nous l'emportâmes.
+Ask Tom.	Demande à Tom.
+Awesome!	Fantastique !
+Be calm.	Sois calme !
+Be calm.	Soyez calme !
+Be calm.	Soyez calmes !
+Be cool.	Sois détendu !
+Be fair.	Sois juste !
+Be fair.	Soyez juste !
+Be fair.	Soyez justes !
+Be fair.	Sois équitable !
+Be fair.	Soyez équitable !
+Be fair.	Soyez équitables !
+Be kind.	Sois gentil.
+Be nice.	Sois gentil !
+Be nice.	Sois gentille !
+Be nice.	Soyez gentil !
+Be nice.	Soyez gentille !
+Be nice.	Soyez gentils !
+Be nice.	Soyez gentilles !
+Beat it.	Dégage !
+Call me.	Appelle-moi !
+Call me.	Appellez-moi !
+Call us.	Appelle-nous !
+Call us.	Appelez-nous !
+Come in.	Entrez !
+Come in.	Entre.
+Come in.	Entre !
+Come in.	Entrez !
+Come on!	Allez !
+Come on.	Allez !
+Come on.	Viens !
+Come on.	Venez !
+Drop it!	Laisse tomber !
+Drop it!	Laissez tomber !
+Drop it!	Laisse-le tomber !
+Drop it!	Laissez-le tomber !
+Get Tom.	Va chercher Tom.
+Get out!	Sortez !
+Get out!	Sors !
+Get out!	Sortez !
+Get out.	Sors.
+Get out.	Casse-toi.
+Go away!	Dégage !
+Go away!	Pars !
+Go away.	Va te faire foutre !
+Go away.	Pars !
+Go away.	Dégage !
+Go away.	Fous le camp !
+Go away.	Pars d'ici.
+Go away.	Va t'en !
+Go away.	Disparais !
+Go away.	Allez-vous en !
+Go home.	Rentrez à la maison.
+Go home.	Rentre à la maison.
+Go home.	Rentre chez toi.
+Go home.	Rentrez chez vous.
+Go slow.	Va doucement !
+Go slow.	Allez doucement !
+Goodbye!	À la revoyure.
+Hang on!	Attends un peu !
+Hang on!	Attendez un peu !
+Hang on.	Tiens bon !
+Hang on.	Tenez bon !
+He quit.	Il laissa tomber.
+He quit.	Il a laissé tomber.
+He runs.	Il court.
+Help me!	Aide-moi !
+Help me.	Aide-moi.
+Help me.	Aidez-moi.
+Help us.	Aidez-nous !
+Help us.	Aide-nous !
+Hold it!	Ne bouge plus !
+Hold on.	Ne quittez pas.
+Hug Tom.	Fais un câlin à Tom.
+I agree.	Je suis du même avis.
+I cried.	J'ai pleuré.
+I dozed.	Je me suis assoupi.
+I dozed.	Je me suis assoupie.
+I drive.	Je conduis.
+I smoke.	Je fume.
+I snore.	Je ronfle.
+I stink.	Je pue.
+I stood.	Je me suis tenu debout.
+I stood.	Je me suis tenue debout.
+I swore.	J’ai promis.
+I swore.	J’ai juré.
+I tried.	J'essayai.
+I tried.	J'ai essayé.
+I tried.	J'ai tenté.
+I waved.	J’ai fait signe.
+I'll go.	J'irai.
+I'm Tom.	Je suis Tom.
+I'm fat.	Je suis gras.
+I'm fat.	Je suis gros.
+I'm fit.	Je suis en forme.
+I'm hit!	Je suis touché !
+I'm hit!	Je suis touchée !
+I'm ill.	Je suis malade.
+I'm sad.	Je suis triste.
+I'm shy.	Je suis timide.
+I'm wet.	Je suis mouillé.
+I'm wet.	Je suis mouillée.
+It's me!	C'est bibi !
+Join us.	Joignez-vous.
+Join us.	Joignez-vous à nous.
+Keep it.	Garde-le !
+Keep it.	Gardez-le !
+Kiss me.	Embrasse-moi.
+Kiss me.	Embrassez-moi.
+Me, too.	Moi aussi.
+Open up.	Ouvre-moi !
+Open up.	Ouvre.
+Perfect!	Parfait !
+See you.	À plus.
+Show me.	Montre-moi !
+Show me.	Montrez-moi !
+Shut up!	Taisez-vous !
+Shut up!	Ferme-la !
+Shut up!	Tais-toi !
+Shut up!	Ferme-la !
+Shut up!	La ferme !
+So long.	À plus tard !
+Take it.	Prends-le !
+Take it.	Prenez-le !
+Tell me.	Dis-moi !
+Tell me.	Dites-moi !
+Tom won.	Tom a gagné.
+Wake up!	Réveille-toi !
+Wake up!	Réveille-toi !
+Wake up!	Réveillez-vous !
+Wake up.	Réveille-toi !
+Wake up.	Réveillez-vous !
+Wash up.	Lave-toi !
+Wash up.	Lavez-vous !
+We know.	Nous savons.
+We lost.	Nous perdîmes.
+We lost.	Nous avons perdu.
+We lost.	Nous fûmes battus.
+We lost.	Nous fûmes battues.
+We lost.	Nous fûmes défaits.
+We lost.	Nous fûmes défaites.
+We lost.	Nous avons été défaits.
+We lost.	Nous avons été défaites.
+We lost.	Nous avons été battus.
+We lost.	Nous avons été battues.
+Welcome.	Bienvenue !
+Who won?	Qui a gagné ?
+Who won?	Qui l'a emporté ?
+You run.	Tu cours.
+Am I fat?	Suis-je gros ?
+Am I fat?	Suis-je grosse ?
+Ask them.	Demande-leur.
+Ask them.	Demandez-leur.
+Back off!	Recule !
+Back off!	Reculez.
+Back off.	Recule !
+Back off.	Reculez.
+Back off.	Retire-toi !
+Back off.	Retirez-vous.
+Be a man.	Sois un homme !
+Be a man.	Soyez un homme !
+Be still.	Sois calme !
+Be still.	Soyez calme !
+Be still.	Soyez calmes !
+Beats me.	Aucune idée.
+Beats me.	J'en sais foutre rien.
+Call Tom.	Appelle Tom.
+Call Tom.	Appelez Tom.
+Cheer up!	Courage !
+Cool off!	Détends-toi !
+Cuff him.	Menottez-le.
+Drive on.	Avance !
+Drive on.	Avancez !
+Drive on.	Continue à rouler !
+Drive on.	Continuez à rouler !
+Find Tom.	Trouve Tom.
+Find Tom.	Trouvez Tom.
+Fix this.	Réparez ceci.
+Fix this.	Répare ça.
+Get down!	Lâche-toi !
+Get down.	Descends !
+Get down.	Descendez !
+Get down.	Lâche-toi !
+Get down.	Lâchez-vous !
+Get lost!	Va voir ailleurs si j'y suis !
+Get lost!	Dégage !
+Get lost!	Va au diable !
+Get real!	Sois réaliste !
+Go ahead.	Vas-y.
+Go ahead.	Poursuis !
+Go ahead.	Passe devant !
+Go ahead.	Vas-y !
+Good job!	Bien joué !
+Good job!	Bon boulot !
+Good job!	Beau travail !
+Grab him.	Attrape-le.
+Grab him.	Attrapez-le.
+Have fun.	Amuse-toi bien !
+Have fun.	Amusez-vous bien !
+He tries.	Il essaye.
+He's wet.	Il est mouillé.
+Help Tom.	Aide Tom.
+Help Tom.	Aidez Tom.
+Hi, guys.	Salut, les mecs !
+How cute!	Comme c'est mignon !
+How deep?	Quelle profondeur ?
+How nice!	Comme c'est chouette !
+How nice!	Comme c'est gentil !
+How nice!	C'est du joli !
+How nice!	Comme c'est agréable !
+Humor me.	Fais-moi rire.
+Hurry up.	Dépêche-toi.
+Hurry up.	Grouille !
+Hurry up.	Pressez-vous !
+Hurry up.	Fiça !
+I am fat.	Je suis gras.
+I did OK.	Je m'en suis bien sorti.
+I did OK.	Je m'en suis bien sortie.
+I did it.	Je l'ai fait.
+I did it.	C'est moi qui l'ai fait.
+I failed.	J'ai échoué.
+I forgot.	J'ai oublié.
+I get it.	J'ai compris.
+I got it.	J'ai compris.
+I got it.	J'ai capté.
+I helped.	J'ai aidé.
+I jumped.	J'ai sauté.
+I looked.	J’ai regardé.
+I moaned.	J’ai râlé.
+I nodded.	J’ai fait signe de la tête.
+I obeyed.	J’ai obéi.
+I phoned.	Je téléphonai.
+I phoned.	J'ai téléphoné.
+I refuse.	Je refuse.
+I refuse.	Je le refuse.
+I rested.	Je me suis reposé.
+I rested.	Je me suis reposée.
+I saw it.	Je l'ai vu.
+I saw it.	Je l’ai vu.
+I sighed.	J’ai soupiré.
+I stayed.	Je suis resté.
+I stayed.	Je suis restée.
+I talked.	J’ai parlé.
+I use it.	Je l'utilise.
+I use it.	J'en fais usage.
+I use it.	Je m'en sers.
+I'll pay.	Je paierai.
+I'll try.	Je vais essayer.
+I'll try.	J'essaierai.
+I'm back.	Je suis revenu.
+I'm back.	Me revoilà.
+I'm bald.	Je suis chauve.
+I'm busy.	Je suis occupé.
+I'm busy.	Je suis occupée.
+I'm calm.	Je suis calme.
+I'm cold.	J'ai froid.
+I'm cool.	Je suis détendu.
+I'm cool.	Je suis détendue.
+I'm deaf.	Je suis sourd.
+I'm deaf.	Je suis sourde.
+I'm done.	J'en ai fini.
+I'm fair.	Je suis juste.
+I'm fair.	J'ai la peau claire.
+I'm fair.	J'ai le teint clair.
+I'm fast.	Je suis rapide.
+I'm fine.	Tout va bien.
+I'm fine.	Je vais bien.
+I'm fine.	Ça va.
+I'm free!	Je suis libre !
+I'm free.	Je suis libre.
+I'm free.	Je suis disponible.
+I'm full.	Je suis repu !
+I'm full.	Je suis rassasié !
+I'm game.	J'en suis.
+I'm game.	Je suis de la partie.
+I'm glad.	Je suis content.
+I'm home.	Je suis chez moi.
+I'm late.	Je suis en retard.
+I'm lazy.	Je suis paresseux.
+I'm lazy.	Je suis fainéant.
+I'm lazy.	Je suis paresseuse.
+I'm lazy.	Je suis fainéante.
+I'm okay.	Je vais bien.
+I'm okay.	Je me porte bien.
+I'm rich.	Je suis riche.
+I'm safe.	Je suis en sécurité.
+I'm sick.	Je suis malade.
+I'm sure.	J'en suis certain.
+I'm sure.	Je suis certain.
+I'm sure.	J'en suis sûr.
+I'm sure.	J'en suis sûre.
+I'm tall.	Je suis grande.
+I'm thin.	Je suis mince.
+I'm tidy.	Je suis ordonné.
+I'm tidy.	Je suis ordonnée.
+I'm ugly.	Je suis laid.
+I'm ugly.	Je suis laide.
+I'm weak.	Je suis faible.
+I'm well.	Je vais bien.
+I'm well.	Je me porte bien.
+I've won.	J'ai gagné.
+I've won.	Je l'ai emporté.
+It helps.	Ça aide.
+It hurts.	Ça fait mal.
+It works.	Elle marche.
+It works.	Ça fonctionne.
+It's Tom.	C'est Tom.
+It's fun.	C'est marrant.
+It's fun.	C'est rigolo.
+It's his.	C'est le sien.
+It's his.	C'est la sienne.
+It's new.	C'est nouveau.
+It's new.	C'est neuf.
+It's odd.	C'est bizarre.
+It's red.	Il est rouge.
+It's sad.	C’est triste.
+Keep out!	Défense d'entrer.
+Keep out.	N'entrez pas.
+Kiss Tom.	Embrasse Tom.
+Leave it.	Laisse tomber !
+Leave it.	Laissez tomber !
+Leave me.	Laissez-moi !
+Leave us.	Laisse-nous !
+Leave us.	Laissez-nous !
+Let's go!	Allons-y !
+Let's go.	Allons-y !
+Look out!	Attention !
+Look out!	Regarde donc !
+Marry me.	Épouse-moi !
+Marry me.	Épousez-moi !
+May I go?	Puis-je partir ?
+May I go?	Puis-je y aller ?
+May I go?	Puis-je m'y rendre ?
+Save Tom.	Sauve Tom.
+Save Tom.	Sauvez Tom.
+She came.	Elle est venue.
+She died.	Elle est morte.
+She runs.	Elle court.
+Sit down!	Assieds-toi !
+Sit down!	Asseyez-vous !
+Sit down.	Assieds-toi.
+Sit here.	Assieds-toi ici.
+Sit here.	Asseyez-vous ici.
+Speak up!	Parle plus fort !
+Speak up!	Parlez plus fort !
+Stop Tom.	Arrête Tom.
+Stop Tom.	Stoppez Tom.
+Taste it.	Goûte-le.
+Taste it.	Goûte-la.
+Taste it.	Goûtez-le.
+Taste it.	Goûtez-la.
+Tell Tom.	Dis-le à Tom.
+Tell Tom.	Informez-en Tom.
+Terrific!	Génial !
+Terrific!	Excellent !
+Terrific!	Formidable !
+They won.	Ils gagnèrent.
+They won.	Elles gagnèrent.
+They won.	Ils ont gagné.
+They won.	Elles ont gagné.
+Tom came.	Tom est venu.
+Tom died.	Tom est mort.
+Tom died.	Tom muera.
+Tom knew.	Tom savait.
+Tom left.	Tom est parti.
+Tom left.	Tom partit.
+Tom lied.	Tom a menti.
+Tom lies.	Tom ment.
+Tom lost.	Tom a perdu.
+Tom paid.	Tom a payé.
+Too late.	Trop tard.
+Trust me.	Faites-moi confiance.
+Trust me.	Fais-moi confiance.
