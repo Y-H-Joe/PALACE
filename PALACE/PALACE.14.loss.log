@@ -9128,3 +9128,4 @@ piece:0	epoch:497	loss:0.39728421	accuracy:0.05000000	tokens/sec:15957.8	device:
 piece:0	epoch:498	loss:0.39705798	accuracy:0.05000000	tokens/sec:16503.0	device: cuda:0
 piece:0	epoch:499	loss:0.39831935	accuracy:0.04000000	tokens/sec:16362.0	device: cuda:0
 piece:0	epoch:500	loss:0.39597353	accuracy:0.06000000	tokens/sec:14245.4	device: cuda:0
+

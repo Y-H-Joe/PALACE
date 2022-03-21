@@ -21,9 +21,9 @@ import matplotlib.pyplot as plt
 world_size = 1
 def split_(str_):
     return str_.split(':')[1]
-loss = pd.read_csv(r'../PALACE.14.loss.log',sep='\t',header=None)[2].apply(split_).\
+loss = pd.read_csv(r'../PALACE_v2.loss_accu.log',sep='\t',header=None)[2].apply(split_).\
                     astype(float).values.reshape((-1,world_size)).mean(axis=1).tolist()
-accuracy = pd.read_csv(r'../PALACE.14.loss.log',sep='\t',header=None)[3].apply(split_).\
+accuracy = pd.read_csv(r'../PALACE_v2.loss_accu.log',sep='\t',header=None)[3].apply(split_).\
                     astype(float).values.reshape((-1,world_size)).mean(axis=1).tolist()
 
 #折线图

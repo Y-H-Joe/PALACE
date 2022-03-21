@@ -32,9 +32,9 @@ import pickle
 import re
 import logging
 import random
-# from tqdm import tqdm
-# from matplotlib_inline import backend_inline
-# import matplotlib.pyplot as plt
+from tqdm import tqdm
+from matplotlib_inline import backend_inline
+import matplotlib.pyplot as plt
 
 import torch
 from torch import nn
@@ -50,14 +50,6 @@ tr_log.set_verbosity_error()
 
 # ==============================Pytorch=================================
 #%% Pytorch
-class Encoder(nn.Module):
-    """编码器-解码器架构的基本编码器接口"""
-    def __init__(self, **kwargs):
-        super(Encoder, self).__init__(**kwargs)
-
-    def forward(self, X, *args):
-        raise NotImplementedError
-
 class PALACE_Encoder_v2(nn.Module):
     def __init__(self, vocab_size, feat_space_dim, ffn_num_hiddens, num_heads,
                  num_blks, dropout, is_cross = False, is_prot = False, use_bias=False, num_steps = 0,device = 'cpu',**kwargs):
@@ -71,8 +63,6 @@ class PALACE_Encoder_v2(nn.Module):
                 self.pos_encoding = PositionalEncoding(feat_space_dim, dropout)
             else:
                 self.num_steps = num_steps
-                # self.dense = nn.Linear(2500,num_steps)
-                # self.relu = nn.ReLU()
                 self.conv1d = nn.Conv1d(2500,num_steps,1,stride=1)
                 self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
                 self.addnorm = AddNorm(feat_space_dim,dropout)
@@ -90,9 +80,6 @@ class PALACE_Encoder_v2(nn.Module):
             if not self.is_prot:
                 X = self.pos_encoding(X * math.sqrt(self.feat_space_dim))
             else:
-                # X = X.permute(0, 2, 1)
-                # X = self.relu(self.dense(X))
-                # X = X.permute(0, 2, 1)
                 X = self.conv1d(X)
                 X = self.addnorm(self.ffn(X),X)
         if not self.is_prot:
@@ -138,13 +125,11 @@ class DecoderBlock_v2(nn.Module):
             dec_valid_lens = None
 
         # 自注意力
-        q,k,v = X, key_values, key_values
-        X2 = self.attention1(k,q,v, dec_valid_lens)
+        X2 = self.attention1(X, key_values, key_values, dec_valid_lens)
         Y = self.addnorm1(X, X2)
         # 编码器－解码器注意力。
         # enc_outputs的开头:(batch_size,num_steps,num_hiddens)
-        q,k,v = Y, enc_outputs, enc_outputs
-        Y2 = self.attention2(k,q,v, enc_valid_lens)
+        Y2 = self.attention2(Y, enc_outputs, enc_outputs, enc_valid_lens)
         Z = self.addnorm2(Y, Y2)
         return self.addnorm3(Z, self.ffn(Z)), state
 
@@ -179,8 +164,6 @@ class PALACE_Decoder_v2(Decoder):
                 DecoderBlock_v2(feat_space_dim, ffn_num_hiddens,
                              num_heads, dropout, i))
         self.dense = nn.Linear(feat_space_dim, vocab_size)
-        # self.softmax = nn.Softmax()
-        self.softmax = nn.LogSoftmax(dim=2)
 
     def init_state(self, enc_outputs, enc_valid_lens, *args):
         return [enc_outputs, enc_valid_lens, [None] * self.num_layers]
@@ -194,90 +177,39 @@ class PALACE_Decoder_v2(Decoder):
             self._attention_weights[0][i] = blk.attention1.dot.attention_weights
             # “编码器－解码器”自注意力权重
             self._attention_weights[1][i] = blk.attention2.dot.attention_weights
-        return self.softmax(self.dense(X)), state
+        return self.dense(X), state
 
     @property
     def attention_weights(self):
         return self._attention_weights
 
-class PALACE_v2(nn.Module):
-    """编码器-解码器架构的基类
-    """
-    def __init__(self, smi_encoder, prot_encoder, cross_encoder, decoder,feat_space_dim,ffn_num_hiddens,dropout, **kwargs):
-        super(PALACE_v2, self).__init__(**kwargs)
-        self.smi_encoder = smi_encoder
-        self.prot_encoder = prot_encoder
-        self.cross_encoder = cross_encoder
-        self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
-        self.addnorm = AddNorm(feat_space_dim, dropout)
-        self.decoder = decoder
-
-    def forward(self, X, dec_X, valid_lens, *args):
-        # Y_hat, _ = net((X_prot, X), dec_input, (prot_valid_len,X_valid_len))
-        # X_prot: tensor([batch_size,2500])
-        # X_smi: tensor([batch_size,num_steps])
-        X_prot, X_smi = X[0],X[1]
-        prot_valid_lens,enc_valid_lens = valid_lens[0],valid_lens[1]
-        # encoder outputs: tensor([batch_size,num_steps,feat_space_dim])
-        X_prot = self.prot_encoder(X_prot, prot_valid_lens, *args)
-        X_smi = self.smi_encoder(X_smi, enc_valid_lens, *args)
-        #enc_outputs = self.cross_encoder(torch.cat((X_prot,X_smi),0), enc_valid_lens, *args)
-        # X_mix = X_prot * X_smi
-        X_mix = X_prot + X_smi
-        # X_mix = self.addnorm(self.ffn(X_mix),(X_mix+X_prot+X_smi))
-        X_mix = self.addnorm(self.ffn(X_mix),(X_mix+X_prot+X_smi) / torch.tensor(3))
-        enc_outputs = self.cross_encoder(X_mix, enc_valid_lens, *args)
-        printer('PALACE','enc_outputs',enc_outputs.shape)
-
-        # dec_state: [enc_outputs, enc_valid_lens, [None] * self.num_blks]
-        # enc_valid_lens = src_valid_len: ([N]): tensor([valid_len_for_each_sample])
-        dec_state = self.decoder.init_state(enc_outputs,enc_valid_lens, *args)
-        #printer("PALACE","dec_state",dec_state)
-
-        return self.decoder(dec_X, dec_state)
-
 # ==============================Model building=================================
 #%% Model building
 
-def grad_clipping(net, theta, diagnose):
+def grad_clipping(net, theta):
     """裁剪梯度
     """
-    # params = [p for p in net.parameters() if p.requires_grad]
     if isinstance(net, nn.Module):
         params,names = [],[]
         for name,p in net.named_parameters():
             if p.requires_grad:
                 params.append(p)
                 names.append(name)
+    # params = [p for p in net.parameters() if p.requires_grad]
     else:
         params = net.params
-
-    if diagnose:
-        for p,n in zip(params,names):
-            try:
-                torch.sum((p.grad ** 2))
-            except Exception as e:
-                import sys
-                sys.exit(f"{e}\nerror param:{n}\n{p}")
+    for p,n in zip(params,names):
+        try:
+            a = torch.sum((p.grad ** 2))
+        except Exception as e:
+            import sys
+            sys.exit(f"{e}\nerror param:{n}\n{p}")
 
     norm = torch.sqrt(sum(torch.sum((p.grad ** 2)) for p in params))
-
     if norm > theta:
         for param in params:
             param.grad[:] *= theta / norm
 
-def grad_diagnose(net,model_id):
-    if isinstance(net, nn.Module):
-        params,names = [],[]
-        for name,p in net.named_parameters():
-            if p.requires_grad:
-                params.append(p)
-                names.append(name)
-    else:
-        params = net.params
-    with open(rf"PALACE_{model_id}_model_diagnose.grad.txt","w") as o:
-        for p,n in zip(params,names):
-            o.write(f"#####################{n}:#####################\ngrad:{p.grad}\n")
 
 def transpose_qkv(X, num_heads):
     """
@@ -324,14 +256,10 @@ def sequence_mask_v2(X, valid_len):
 class MaskedSoftmaxCELoss(nn.CrossEntropyLoss):
     """带遮蔽的softmax交叉熵损失函数
     """
-    def __init__(self, vocab_size,device):
-        super(MaskedSoftmaxCELoss, self).__init__()
-        # train loss weights, generated using prepare_CE_loss_weight.py
-        self.weight = None
     # pred的形状：(batch_size,num_steps,vocab_size)
     # label的形状：(batch_size,num_steps)
     # valid_len的形状：(batch_size,)
-    def forward(self, pred, label, valid_len, epoch, diagnose, model_id):
+    def forward(self, pred, label, valid_len):
         """
         print(f"label:{label}")
         print(f"label shape:{label.shape}")
@@ -353,11 +281,10 @@ class MaskedSoftmaxCELoss(nn.CrossEntropyLoss):
         print(f"weights after shape:{weights.shape}")
         """
         # reduction: 'none' | 'mean' | 'sum'.
-        self.reduction = 'none'
+        self.reduction='none'
         # permute here to let class in middle (asked by pytorch)
         # unweighted_loss: (batch_size, num_steps)
-        unweighted_loss = super(MaskedSoftmaxCELoss, self).forward(
-                pred.permute(0, 2, 1), label)
+        unweighted_loss = super(MaskedSoftmaxCELoss, self).forward(pred.permute(0, 2, 1), label)
         """
         print(f"unweighted_loss :{unweighted_loss}")
         print(f"unweighted_loss shape:{unweighted_loss.shape}")
@@ -366,14 +293,11 @@ class MaskedSoftmaxCELoss(nn.CrossEntropyLoss):
         # original d2l was wrong, you cannot just mean over num_steps, which will
         # make net learn to predict as long tensor as possible
         # weighted_loss = (unweighted_loss * weights).mean(dim=1)
-        weighted_loss = (unweighted_loss * weights).sum(dim=1)
-        """
         weighted_loss = (unweighted_loss * weights)
-        weighted_loss_valid = (weighted_loss[0].sum() / valid_len[0]).unsqueeze(0)
-        for i,(seq,val) in enumerate(zip(weighted_loss[1:],valid_len[1:])):
-            loss_ = (seq.sum() / val).unsqueeze(0)
-            weighted_loss_valid = torch.cat((weighted_loss_valid, loss_),0)
-        """
+        weighted_loss_valid = torch.empty(valid_len.shape[0], device = pred.device,requires_grad=True)
+        for i,(seq,val) in enumerate(zip(weighted_loss,valid_len)):
+            loss_ = seq.sum() / val
+            weighted_loss_valid[i] = loss_
         # weighted_loss_valid = torch.tensor(weighted_loss_valid, device = pred.device,requires_grad=True)
         # print(f"weighted_loss_valid :{weighted_loss_valid}")
         # print(f"weighted_loss_valid shape:{weighted_loss_valid.shape}")
@@ -382,27 +306,8 @@ class MaskedSoftmaxCELoss(nn.CrossEntropyLoss):
         print(f"weighted_loss after:{weighted_loss}")
         print(f"weighted_loss after shape:{weighted_loss.shape}")
         """
-        if diagnose == True:
-            if epoch == 500 :
-                with open(rf'PALACE_{model_id}_model_diagnose.loss.txt','w') as w:
-                    w.write("########################### pred ###########################\n")
-                    w.write(str(pred))
-                    w.write(f"\npred shape:{pred.shape}")
-                    w.write("\n########################### label ###########################\n")
-                    w.write(str(label))
-                    w.write(f"\nlabel shape:{label.shape}")
-                    w.write("\n########################### valid_len ###########################\n")
-                    w.write(str(valid_len))
-                    w.write(f"\nvalid_len shape:{valid_len.shape}")
-                    w.write("\n########################### weights ###########################\n")
-                    w.write(str(weights))
-                    w.write("\n########################### unweighted_loss ###########################\n")
-                    w.write(str(unweighted_loss))
-                    w.write("\n########################### weighted_loss ###########################\n")
-                    w.write(str(weighted_loss))
-
-        # return weighted_loss_valid
-        return weighted_loss
+        return weighted_loss_valid
+        # return weighted_loss
 
 class PositionalEncoding(nn.Module):
     """位置编码
@@ -619,17 +524,6 @@ class PositionWiseFFN(nn.Module):
         """ simply propagate forward """
         return self.dense2(self.relu(self.dense1(X)))
 
-class PositionWiseFFN_v2(nn.Module):
-    """基于位置的前馈网络, change the last dimension"""
-    def __init__(self, feat_space_dim, ffn_num_hiddens, **kwargs):
-        super(PositionWiseFFN_v2, self).__init__(**kwargs)
-        self.dense1 = nn.Linear(feat_space_dim, feat_space_dim)
-        self.relu = nn.ReLU()
-
-    def forward(self, X):
-        """ simply propagate forward """
-        return self.relu(self.dense1(X))
-
 class AddNorm(nn.Module):
     """残差连接后进行层规范化,
     drop out, add and layer normalization"""
@@ -690,7 +584,7 @@ class PALACE_prot_net(nn.Module):
         self.dense1 = nn.Linear(feat_space_dim, feat_space_dim)
         self.relu1 = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
-        self.dense2 = nn.Linear(feat_space_dim,prot_nota_len)
+        self.dense2 = nn.Linear(feat_space_dim,feat_space_dim)
         self.relu2 = nn.ReLU()
 
     def forward(self, X, valid_lens, *args):
@@ -707,118 +601,122 @@ class PALACE_prot_net(nn.Module):
         # X output: [batch_size,prot_nota_len]
         return self.relu2(self.dense2(self.dropout(self.relu1(self.dense1(X)))))
 
+class Encoder(nn.Module):
+    """编码器-解码器架构的基本编码器接口"""
+    def __init__(self, **kwargs):
+        super(Encoder, self).__init__(**kwargs)
 
+    def forward(self, X, *args):
+        raise NotImplementedError
 
 class EncoderBlock(nn.Module):
     """transformer编码器块"""
     def __init__(self, feat_space_dim, ffn_num_hiddens, num_heads,
-                 prot_nota_len, dropout, use_bias=False, **kwargs):
+                 dropout, use_bias=False, **kwargs):
         super(EncoderBlock, self).__init__(**kwargs)
 
-        self.attention = MultiHeadExternalMixAttention(
-                feat_space_dim, num_heads, prot_nota_len, dropout,use_bias)
+        self.attention = MultiHeadAttention(
+                feat_space_dim, num_heads,dropout,use_bias)
         self.addnorm1 = AddNorm(feat_space_dim, dropout)
         self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
         self.addnorm2 = AddNorm(feat_space_dim, dropout)
         #self.addnorm3 = AddNorm(feat_space_dim, dropout)
 
-    def forward(self, X, valid_lens):
-        # X_prot: tensor([batch_size,prot_nota_len,feat_space_dim])
-        # X_smi: tensor([batch_size,num_steps,feat_space_dim])
-        X_prot, X_smi = X
+    def forward(self, X, valid_lens,is_cross = False):
+        # X : tensor([batch_size,num_steps,feat_space_dim])
         # k and q will be the mix of X_prot and X_smi
         # v is just X_smi
-        k, q, v = (X_prot,X_smi), (X_prot,X_smi), X_smi
-
+# =============================================================================
+#         if is_cross:
+#             batch_size = int(X.shape[0] / 2)
+#             X_prot, X_smi = X[:batch_size], X[batch_size:]
+#             k,q,v = X_prot, X_smi, X_prot
+#         else:
+#             k, q, v = X, X, X
+# =============================================================================
+        k, q, v = X, X, X
         # X: tensor([batch_size,num_steps,feat_space_dim])
         X = self.attention(k, q, v, valid_lens)
-        printer("EncoderBlock","X",X.shape,"MultiHeadExternalMixAttention")
+        printer("EncoderBlock","X",X.shape,"MultiHeadAttention")
 
         # X: tensor([batch_size,num_steps,feat_space_dim])
-        X = self.addnorm1(X, X_smi)
+        X = self.addnorm1(X, X)
         printer("EncoderBlock","X",X.shape,"AddNorm")
 
         # return self.addnorm3(self.addnorm2(X, X),X_smi)
         return self.addnorm2(self.ffn(X), X)
 
-
 class PALACE_Encoder(Encoder):
     """
     Encoder
     """
-    def __init__(self,vocab_size, prot_nota_len, feat_space_dim, ffn_num_hiddens, num_heads,
-                 num_blks, dropout, prot_MLP,use_bias=False, **kwargs):
+    def __init__(self,vocab_size, feat_space_dim, ffn_num_hiddens, num_heads,
+                 num_blks, dropout, is_cross = False, is_prot = False, use_bias=False, num_steps = 0,**kwargs):
         super(PALACE_Encoder, self).__init__(**kwargs)
         self.feat_space_dim = feat_space_dim
+        self.is_cross = is_cross
+        self.is_prot = is_prot
         printer("PALACE_Encoder",'vocab_size',vocab_size)
         printer("PALACE_Encoder",'feat_space_dim',feat_space_dim)
 
-        self.embedding = nn.Embedding(vocab_size, feat_space_dim)
-        self.pos_encoding = PositionalEncoding(feat_space_dim, dropout)
-
-        # here implement ProteinEncoding
-        # 45 is the same of protein feature dimension
-        self.convT1d = nn.ConvTranspose1d(in_channels=prot_nota_len, out_channels=feat_space_dim, kernel_size=(prot_nota_len,1),stride=1)
-        self.prot_encoding = ProteinEncoding(feat_space_dim,prot_MLP, dropout)
+        if not is_cross:
+            self.embedding = nn.Embedding(vocab_size, feat_space_dim)
+            if not is_prot:
+                self.pos_encoding = PositionalEncoding(feat_space_dim, dropout)
+            else:
+                self.num_steps = num_steps
+                self.conv1d = nn.Conv1d(2500,num_steps,1,stride=1)
+                self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
+                self.addnorm = AddNorm(feat_space_dim,dropout)
 
         # encoder block
-        self.blks = nn.Sequential()
-        for i in range(num_blks):
-            self.blks.add_module("block"+str(i),
-                EncoderBlock(feat_space_dim, ffn_num_hiddens, num_heads,
-                             prot_nota_len, dropout, use_bias))
+        if not is_prot:
+            self.blks = nn.Sequential()
+            for i in range(num_blks):
+                self.blks.add_module("block"+str(i),
+                    EncoderBlock(feat_space_dim, ffn_num_hiddens, num_heads,
+                                 dropout, use_bias))
 
     def forward(self, X, valid_lens, *args):
         # 因为位置编码值在-1和1之间，
         # 因此嵌入值乘以嵌入维度的平方根进行缩放，
         # 然后再与位置编码相加。
-        X_prot, X_smi = X
-        # X_prot: tensor([batch_size,prot_nota_len])
-        # X_smi: tensor([batch_size,num_steps])
-        printer("PALACE_Encoder","X_prot",X_prot.shape)
-        printer("PALACE_Encoder","X_smi",X_smi.shape)
+        # X: tensor([batch_size,num_steps])
+        is_cross = self.is_cross
+        # print(is_cross)
+        if not is_cross:
+            X = self.embedding(X)
+            if not self.is_prot:
+                X = self.pos_encoding(X * math.sqrt(self.feat_space_dim))
+            else:
+                X = self.conv1d(X)
 
-        X_smi = self.embedding(X_smi)
-        printer("PALACE_Encoder","X_smi",X_smi.shape,"embedding")
-        # X_smi: from tensor([batch_size,num_steps]) -> tensor([batch_size,num_steps,feat_space_dim])
-        X_smi = self.pos_encoding(X_smi * math.sqrt(self.feat_space_dim))
-        printer("PALACE_Encoder","X_smi",X_smi.shape,"pos_encoding")
-        printer("PALACE_Encoder","X_smi.device",X_smi.device,"pos_encoding")
-        printer("PALACE_Encoder","X_prot.device",X_prot.device,"pos_encoding")
-        printer("PALACE_Encoder","self.convT1d.device",next(self.convT1d.parameters()).device)
+        # X: from tensor([batch_size,num_steps]) -> tensor([batch_size,num_steps,feat_space_dim])
+        if not self.is_prot:
+            self.attention_weights = [None] * len(self.blks)
+            for i, blk in enumerate(self.blks):
+                # return of blk = X: tensor([batch_size,num_steps,feat_space_dim])
+                X = blk(X, valid_lens, is_cross)
+                # after the first cross attention blk, the k,q,v became the same
+                is_cross = False
+                self.attention_weights[i] = blk.attention.dot.attention_weights
+        else:
+            X = self.addnorm(self.ffn(X),X)
+            # print(X)
 
-        # X_prot after unsequeeze: tensor([batch_size,prot_nota_len,1,1])
-        X_prot = X_prot.unsqueeze(2).unsqueeze(3)
-        # X_prot after convT1d: tensor([batch_size,feat_space_dim,prot_nota_len])
-        X_prot = self.convT1d(X_prot).squeeze(3)
-        printer("PALACE_Encoder","X_prot",X_prot.shape,"convT1d")
-
-        # X_prot: from tensor([batch_size,feat_space_dim,prot_nota_len]) -> tensor([batch_size,prot_nota_len,feat_space_dim])
-        X_prot = X_prot.transpose(1,2)
-        printer("PALACE_Encoder","X_prot",X_prot.shape,"transpose")
-
-        # X_prot: from tensor([batch_size,prot_nota_len,feat_space_dim]) -> tensor([batch_size,prot_nota_len,feat_space_dim])
-        X_prot = self.prot_encoding(X_prot)
-        printer("PALACE_Encoder","X_prot",X_prot.shape,"prot_encoding")
-
-        self.attention_weights = [None] * len(self.blks)
-        for i, blk in enumerate(self.blks):
-            # return of blk = X_smi: tensor([batch_size,num_steps,feat_space_dim])
-            X_smi = blk((X_prot,X_smi), valid_lens)
-            self.attention_weights[i] = blk.attention.dot.attention_weights
-        printer("PALACE_Encoder",'output',X_smi.shape)
+        printer("PALACE_Encoder",'output',X.shape)
         # the X_smi is not the original X_smi anymore
-        return X_smi
+        return X
+
 
 class DecoderBlock(nn.Module):
     """解码器中第i个块"""
     def __init__(self,feat_space_dim, ffn_num_hiddens, num_heads,
-                 prot_nota_len, dropout, dec_rank,use_bias, **kwargs):
+                 dropout, dec_rank,use_bias, **kwargs):
         super(DecoderBlock, self).__init__(**kwargs)
 
         self.dec_rank = dec_rank
-        self.attention1 = MultiHeadExternalMixAttention(
-                feat_space_dim, num_heads, prot_nota_len, dropout,use_bias)
+        self.attention1 = MultiHeadAttention(feat_space_dim, num_heads, dropout,use_bias)
         self.addnorm1 = AddNorm(feat_space_dim, dropout)
 
         self.attention2 = MultiHeadAttention(feat_space_dim, num_heads, dropout)
@@ -828,69 +726,38 @@ class DecoderBlock(nn.Module):
         #self.addnorm4 = AddNorm(feat_space_dim, dropout)
 
     def forward(self, X, state):
-        # init state: (enc_outputs, enc_valid_lens, [None] * self.num_blks])
-        # X = (X_prot,X_smi_y)
-        # X_prot: tensor([batch_size,prot_nota_len,feat_space_dim])
-        # X_smi: tensor([batch_size,num_steps,feat_space_dim])
-        X_prot,X_smi_y = X
-
+        enc_outputs, enc_valid_lens = state[0], state[1]
         # 训练阶段，输出序列的所有词元都在同一时间处理，
         # 因此state[2][self.dec_rank]初始化为None。
         # 预测阶段，输出序列是通过词元一个接着一个解码的，
-        # 因此state[2][self.dec_rank]包含着直到当前时间步第dec_rank个块解码的输出表示
-
-        # is None means the first block
+        # 因此state[2][self.dec_rank]包含着直到当前时间步第i个块解码的输出表示
         if state[2][self.dec_rank] is None:
-            k = X_smi_y
-        else: # not None means predicting
-            # state[2][self.dec_rank] is the cumulation of previous key_values
-            # state[2][self.dec_rank]: (batch_size,num_steps * (dec_rank),feat_space_dim)
-            # dec_rank starts from 0, so no need to minus 1 (dec_rank - 1)
-            k = torch.cat((state[2][self.dec_rank], X_smi_y), axis=1)
-            printer("DecoderBlock","k",k.shape,"concatenation")
-            # after concatenate
-            # k: (batch_size,num_steps * (dec_rank+1),feat_space_dim)
-
-        state[2][self.dec_rank] = k
-        printer("DecoderBlock","self.training",self.training)
+            key_values = X
+        else:
+            key_values = torch.cat((state[2][self.dec_rank], X), axis=1)
+        state[2][self.dec_rank] = key_values
         if self.training:
-            batch_size, num_steps, _ = X_smi_y.shape
-            # dec_valid_lens: ([batch_size,num_steps])
-            # each row is [1,2,...,num_steps]
-            dec_valid_lens = torch.arange(1, num_steps + 1, device=X_smi_y.device).repeat(batch_size, 1)
-            printer("DecoderBlock","dec_valid_lens",dec_valid_lens.shape)
+            batch_size, num_steps, _ = X.shape
+            # dec_valid_lens: (batch_size,num_steps),
+            # each row is: [1,2,...,num_steps]
+            dec_valid_lens = torch.arange(1, num_steps + 1, device=X.device).repeat(batch_size, 1)
         else:
             dec_valid_lens = None
-        printer("DecoderBlock","k",k.shape,"state")
 
-        # first attention
-        # key_values: torch.Size([batch_size,num_steps * (dec_rank+1),feat_space_dim])
-        # X_smi_y/2/3: in prediction: (1,1,feat_space_dim)
-        k, q, v = (X_prot,k),(X_prot,X_smi_y), k
-        printer("DecoderBlock","X_smi_y",X_smi_y.shape,"state")
-        printer("DecoderBlock","X_prot",X_prot.shape,"state")
-        X_smi_y2 = self.attention1(k, q, v, dec_valid_lens)
-        printer("DecoderBlock","X_smi_y2",X_smi_y2.shape)
-        X_smi_y2 = self.addnorm1(X_smi_y, X_smi_y2)
-
+        # 自注意力
+        k,q,v = key_values, X, key_values
+        X2 = self.attention1(k,q,v, dec_valid_lens)
+        Y = self.addnorm1(X, X2)
         # 编码器－解码器注意力。
-        # enc_outputs:(batch_size,num_steps,feat_space_dim)
-        # X_smi_y2:
-        enc_outputs, enc_valid_lens = state[0], state[1]
-        #printer("DecoderBlock","state",state)
-        k, q ,v = enc_outputs, X_smi_y2, enc_outputs
-        X_smi_y3 = self.attention2(k, q, v, enc_valid_lens)
-        printer("DecoderBlock","X_smi_y3",X_smi_y3.shape,"second attention")
-        X_smi_y3 = self.addnorm2(X_smi_y2, X_smi_y3)
-
-        # return self.addnorm4(self.addnorm3(X_smi_y3, self.ffn(X_smi_y3)),X_smi_y), state
-        return self.addnorm3(X_smi_y3, self.ffn(X_smi_y3)), state
-
-
+        # enc_outputs的开头:(batch_size,num_steps,num_hiddens)
+        k,q,v = enc_outputs,Y,enc_outputs
+        Y2 = self.attention2(k,q,v, enc_valid_lens)
+        Z = self.addnorm2(Y, Y2)
+        return self.addnorm3(Z, self.ffn(Z)), state
 
 class PALACE_Decoder(Decoder):
-    def __init__(self, vocab_size, prot_nota_len, feat_space_dim, ffn_num_hiddens, num_heads,
-                 num_blks, dropout, prot_MLP,use_bias=False, **kwargs):
+    def __init__(self, vocab_size, feat_space_dim, ffn_num_hiddens, num_heads,
+                 num_blks, dropout,use_bias=False, **kwargs):
         super(PALACE_Decoder, self).__init__(**kwargs)
         self.feat_space_dim = feat_space_dim
         printer("PALACE_Decoder",'vocab_size',vocab_size)
@@ -899,18 +766,14 @@ class PALACE_Decoder(Decoder):
         self.embedding = nn.Embedding(vocab_size, feat_space_dim)
         self.pos_encoding = PositionalEncoding(feat_space_dim, dropout)
 
-        # here implement ProteinEncoding
-        # 45 is the same of protein feature dimension
-        self.convT1d = nn.ConvTranspose1d(in_channels=prot_nota_len, out_channels=feat_space_dim, kernel_size=(prot_nota_len,1),stride=1)
-        self.prot_encoding = ProteinEncoding(feat_space_dim,prot_MLP, dropout)
-
         self.blks = nn.Sequential()
         for dec_rank in range(num_blks):
             self.blks.add_module("block"+str(dec_rank),
-                DecoderBlock(feat_space_dim, ffn_num_hiddens, num_heads, prot_nota_len, dropout, dec_rank,use_bias))
+                DecoderBlock(feat_space_dim, ffn_num_hiddens, num_heads,
+                 dropout, dec_rank,use_bias))
 
         self.dense = nn.Linear(feat_space_dim, vocab_size)
-        self.softmax = nn.LogSoftmax(dim=2)
+        self.softmax = nn.Softmax(dim=2)
 
         self.num_blks = num_blks
         self.feat_space_dim = feat_space_dim
@@ -919,35 +782,15 @@ class PALACE_Decoder(Decoder):
         return [enc_outputs, enc_valid_lens, [None] * self.num_blks]
 
     def forward(self, X, state):
-        # X = (X_prot,X_smi_y)
         # dec_input is the right shifted X_smi with force teaching
         # 因为位置编码值在-1和1之间，
         # 因此嵌入值乘以嵌入维度的平方根进行缩放，
         # 然后再与位置编码相加。
-        X_prot, X_smi_y = X
 
-
-        # X_prot: tensor([batch_size,45])
-        # X_smi_y: tensor([batch_size,num_steps])
-        printer("PALACE_Decoder","X_prot",X_prot.shape)
-        printer("PALACE_Decoder","X_smi_y",X_smi_y.shape)
-
-        X_smi_y = self.embedding(X_smi_y)
-        printer("PALACE_Decoder","X_smi_y",X_smi_y.shape,"embedding")
-        # X_smi: from tensor([batch_size,num_steps]) -> tensor([batch_size,num_steps,feat_space_dim])
-        X_smi_y = self.pos_encoding(X_smi_y * math.sqrt(self.feat_space_dim))
-        printer("PALACE_Decoder","X_smi_y",X_smi_y.shape,"pos_encoding")
-
-        # encode protein to protein features
-        # X_prot: from tensor([batch_size,45]) -> tensor([batch_size,45,prot_nota_len])
-        X_prot = self.convT1d(X_prot.unsqueeze(2).unsqueeze(3)).squeeze(3)
-        printer("PALACE_Decoder","X_prot",X_prot.shape,"convT1d")
-        # X_prot: from tensor([batch_size,45,prot_nota_len]) -> tensor([batch_size,prot_nota_len,45])
-        X_prot = X_prot.transpose(1,2)
-        printer("PALACE_Decoder","X_prot",X_prot.shape,"transpose")
-        # X_prot: from tensor([batch_size,prot_nota_len,45]) -> tensor([batch_size,prot_nota_len,feat_space_dim])
-        X_prot = self.prot_encoding(X_prot)
-        printer("PALACE_Decoder","X_prot",X_prot.shape,"prot_encoding")
+        # X: tensor([batch_size,num_steps])
+        X = self.embedding(X)
+        # X: from tensor([batch_size,num_steps]) -> tensor([batch_size,num_steps,feat_space_dim])
+        X = self.pos_encoding(X * math.sqrt(self.feat_space_dim))
 
         # _attention_weights: (2,num_blks)
         self._attention_weights = [[None] * len(self.blks) for _ in range (2)]
@@ -956,36 +799,44 @@ class PALACE_Decoder(Decoder):
         # each decoder block, will take in same enc_outputs and enc_valid_lens
         for i, blk in enumerate(self.blks):
             #printer("PALACE_Decoder","state",state,i)
-            X_smi_y, state = blk((X_prot,X_smi_y), state)
+            X, state = blk(X, state)
             # 解码器自注意力权重
             self._attention_weights[0][i] = blk.attention1.dot.attention_weights
             # “编码器－解码器”自注意力权重
             self._attention_weights[1][i] = blk.attention2.dot.attention_weights
-        return self.softmax(self.dense(X_smi_y)), state
+        return self.softmax(self.dense(X)), state
 
     @property
     def attention_weights(self):
         return self._attention_weights
 
-class PALACE_v1(nn.Module):
+
+
+class PALACE(nn.Module):
     """编码器-解码器架构的基类
     """
-    def __init__(self, encoder, decoder,prot_net, **kwargs):
-        super(PALACE_v1, self).__init__(**kwargs)
-        self.encoder = encoder
+    def __init__(self, smi_encoder, prot_encoder, cross_encoder, decoder,feat_space_dim,ffn_num_hiddens,dropout, **kwargs):
+        super(PALACE, self).__init__(**kwargs)
+        self.smi_encoder = smi_encoder
+        self.prot_encoder = prot_encoder
+        self.cross_encoder = cross_encoder
+        self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
+        self.addnorm = AddNorm(feat_space_dim, dropout)
         self.decoder = decoder
-        self.prot_net = prot_net
 
     def forward(self, X, dec_X, valid_lens, *args):
+        # Y_hat, _ = net((X_prot, X), dec_input, (prot_valid_len,X_valid_len))
         # X_prot: tensor([batch_size,2500])
         # X_smi: tensor([batch_size,num_steps])
-        X_prot, X_smi = X
-        prot_valid_lens,enc_valid_lens = valid_lens
-        # X_prot after prot_net: tensor([batch_size,prot_nota_len])
-        X_prot_feat = self.prot_net(X_prot,prot_valid_lens)
-        enc_X = (X_prot_feat,X_smi)
-        # enc_outputs: tensor([batch_size,num_steps,feat_space_dim])
-        enc_outputs = self.encoder(enc_X, enc_valid_lens, *args)
+        X_prot, X_smi = X[0],X[1]
+        prot_valid_lens,enc_valid_lens = valid_lens[0],valid_lens[1]
+        # encoder outputs: tensor([batch_size,num_steps,feat_space_dim])
+        X_prot = self.prot_encoder(X_prot,prot_valid_lens, *args)
+        X_smi = self.smi_encoder(X_smi, enc_valid_lens, *args)
+        #enc_outputs = self.cross_encoder(torch.cat((X_prot,X_smi),0), enc_valid_lens, *args)
+        X_mix = X_prot * X_smi
+        X_mix = self.addnorm(self.ffn(X_mix),(X_mix+X_prot))
+        enc_outputs = self.cross_encoder(X_mix, enc_valid_lens, *args)
         printer('PALACE','enc_outputs',enc_outputs.shape)
 
         # dec_state: [enc_outputs, enc_valid_lens, [None] * self.num_blks]
@@ -993,17 +844,7 @@ class PALACE_v1(nn.Module):
         dec_state = self.decoder.init_state(enc_outputs,enc_valid_lens, *args)
         #printer("PALACE","dec_state",dec_state)
 
-        # dec_X = (X_prot,X_smi_y)
-        # X_smi_y: torch.Size([batch_size, num_steps])
-        # removed the last tok in each sample of Y.
-        # Y is the right shifted X_smi.
-        # Y: [batch_size, num_steps-1]
-        # added bos tok in begining of each sample of Y to get X_smi_y.
-        # X_smi_y: [batch_size, num_steps]
-        X_smi_y = dec_X
-        dec_X = (X_prot_feat,X_smi_y)
         return self.decoder(dec_X, dec_state)
-
 
 # ===============================Preprocess====================================
 #%% Preprocess
@@ -1234,7 +1075,7 @@ def prot_to_features_prose(prot : list, device: str):
     # reshape to be torch.Size([N, 45])
     return torch.stack(prot_features).reshape((len(prot_features),-1,45)).mean(dim = 1)
 
-# 2 3 4
+
 def read_data(data_dir, device, prot_col = 2, src_col = 3, tgt_col = 4, sep = '\t'):
     """
     read text file and return prot_features, source, target
@@ -1247,7 +1088,7 @@ def read_data(data_dir, device, prot_col = 2, src_col = 3, tgt_col = 4, sep = '\
     source = []
     target = []
     give_up_pre_trained = True
-    with open(data_dir,'r',encoding='utf-8') as r:
+    with open(data_dir,'r') as r:
         for line in r:
             line_split = line.strip().split(sep)
             if not give_up_pre_trained:
@@ -1255,7 +1096,6 @@ def read_data(data_dir, device, prot_col = 2, src_col = 3, tgt_col = 4, sep = '\
             else: prot.append(list(line_split[prot_col].upper()))
             source.append(line_split[src_col].split(' '))
             target.append(line_split[tgt_col].split(' '))
-            # prot.append(line_split[prot_col].split(' '))
     # let's say in total N samples
     # prot: [prot_seq_sample1,prot_seq_sample2,...,prot_seq_sampleN]
     # source: [[tok1,tok2...],[tok3,tok2,...],...until_N]
@@ -1311,19 +1151,17 @@ def load_data(rank, world_size,data_dir,batch_size, num_steps, device, vocab_dir
     prot, source, target = read_data(data_dir, device)
 
     if vocab_dir:
-        assert os.path.exists(vocab_dir[0]) and os.path.exists(vocab_dir[1]) and os.path.exists(vocab_dir[2]),"cannot find available vocab"
+        assert os.path.exists(vocab_dir[0]) and os.path.exists(vocab_dir[1]),"cannot find available vocab"
         src_vocab = retrieve_vocab(vocab_dir[0])
         tgt_vocab = retrieve_vocab(vocab_dir[1])
         prot_vocab = retrieve_vocab(vocab_dir[2])
     else:
         src_vocab = Vocab(source, min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
         tgt_vocab = Vocab(target, min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
-        prot_vocab = Vocab(prot, min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
         merge_vocab = Vocab(source + target,min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
-        save_vocab(src_vocab,'./vocab/src_vocab.pkl')
-        save_vocab(tgt_vocab,'./vocab/tgt_vocab.pkl')
-        save_vocab(prot_vocab,'./vocab/prot_vocab.pkl')
-        save_vocab(merge_vocab,'./vocab/merge_vocab.pkl')
+        save_vocab(src_vocab,'./saved/src_vocab.pkl')
+        save_vocab(tgt_vocab,'./saved/tgt_vocab.pkl')
+        save_vocab(merge_vocab,'./saved/merge_vocab.pkl')
 
     # src_array: ([N,num_steps]): tensor([[tok1_to_idx,tok2_to_idx,...,tok_num_steps_to_idx],[...],...])
     # src_valid_len: ([N]): tensor([valid_len_for_each_sample])
@@ -1512,7 +1350,7 @@ def model_diagnose(model_id):
     dict2 = torch.load('./PALACE_models/checkpoint_{}.pt'.format(model_id), map_location='cpu')['net']
     model_compare(dict1,dict2)
     dist_log = {}
-    with open(rf'./PALACE_{model_id}_model_diagnose.model.txt','w') as w:
+    with open(r'./PALACE_model_diagnose.txt','w') as w:
         for k in dict1.keys():
             w.write(f'{k} shape: {dict1[k].shape}\n')
             distance = (dict1[k]-dict2[k]).abs().mean()
@@ -1549,10 +1387,11 @@ def init_weights(m,use = 'xavier_uniform_'):
         if type(m) == nn.Linear:
             nn.init.orthogonal_(m.weight)
 
-def train_PALACE(piece,net, data_iter,optimizer,scheduler, loss, num_epochs, tgt_vocab,
-                 device,loss_log, model_id, diagnose = False):
+def train_PALACE(piece,net, data_iter,optimizer,scheduler, num_epochs, tgt_vocab,
+                 device,loss_log):
     """训练序列到序列模型
     """
+    loss = MaskedSoftmaxCELoss()
     net.train()
     for epoch in range(num_epochs):
         timer = Timer()
@@ -1562,7 +1401,6 @@ def train_PALACE(piece,net, data_iter,optimizer,scheduler, loss, num_epochs, tgt
         total_seq = 0
         data_iter.sampler.set_epoch(epoch)
         for i,batch in enumerate(data_iter):
-            # print(f"batch: {batch}\n")
             optimizer.zero_grad()
             X_prot,prot_valid_len, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
             # bos: torch.Size([batch_size, 1])
@@ -1577,10 +1415,11 @@ def train_PALACE(piece,net, data_iter,optimizer,scheduler, loss, num_epochs, tgt
             # Y_hat: (batch_size,num_steps,vocab_size)
             # Y: (batch_size,num_steps)
             Y_hat, _ = net([X_prot, X], dec_input, [prot_valid_len,X_valid_len])
+
             # loss and backward
-            l = loss(Y_hat, Y, Y_valid_len, epoch, diagnose, model_id)
+            l = loss(Y_hat, Y, Y_valid_len)
             l.sum().backward() # 损失函数的标量进行“反向传播”
-            grad_clipping(net, 1, diagnose)
+            grad_clipping(net, 1)
             num_tokens = Y_valid_len.sum()
             optimizer.step()
             with torch.no_grad():
@@ -1594,34 +1433,31 @@ def train_PALACE(piece,net, data_iter,optimizer,scheduler, loss, num_epochs, tgt
             preds = Y_hat.argmax(dim=2).type(torch.int32)
             for i in range(batch_size):
                 p, y = preds[i], Y[i]
-                if epoch % 90 == 1 and i == 1 and diagnose: # 8
+                if epoch % 500 ==0:
                     print(f"p:{p}")
                     print(f"p shape:{p.shape}")
                     print(f"y:{y}")
                     print(f"y shape:{y.shape}")
-                try: y_eos = (y == tgt_vocab['<eos>']).nonzero()[0].item()
-                except: y_eos = num_steps
-                try: p_eos = (p == tgt_vocab['<eos>']).nonzero()[0].item()
+                y_eos = (y == tgt_vocab['<eos>']).nonzero().item()
+                try: p_eos = (p == tgt_vocab['<eos>']).nonzero().item()
                 except: p_eos = num_steps
                 p_valid = p[:p_eos]
                 y_valid = y[:y_eos]
-                if epoch % 90 == 1 and i == 1 and diagnose:
+                if epoch % 500 ==0:
                     print(f"p_valid:{p_valid}")
                     print(f"p_valid shape:{p_valid.shape}")
                     print(f"y_valid:{y_valid}")
                     print(f"y_valid shape:{y_valid.shape}")
-                    print(f"lossCE weight:{loss.weight}")
                 if torch.equal(p_valid, y_valid): correct += 1
 
-        if diagnose and epoch % 30 == 0: grad_diagnose(net, model_id)
-
+            #if i % 1000 == 0:
         scheduler.step(loss_sum)
-        # scheduler.step()
-
+        #scheduler.step()
+        if epoch % 30 == 0: print(f"learning rate: {optimizer.param_groups[0]['lr']}")
         loss_ = metric[0] / metric[1]
         accuracy = correct / total_seq
         with open(loss_log,'a') as o:
-            o.write(f"piece:{piece}\tepoch:{epoch}\tloss:{loss_:.8f}\taccuracy:{accuracy:.8f}\tlr:{optimizer.param_groups[0]['lr']}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n")
+            o.write(f'piece:{piece}\tepoch:{epoch}\tloss:{loss_:.8f}\taccuracy:{accuracy:.8f}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n')
     dist.barrier()
 # ==============================Prediction=====================================
 #%% Prediction
