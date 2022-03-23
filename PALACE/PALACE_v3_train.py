@@ -29,7 +29,7 @@ import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
 
-from modules_v2 import (printer,PALACE_v2,logging,save_on_master,train_PALACE,model_diagnose,
+from modules_v3 import (printer,PALACE_v2,logging,save_on_master,train_PALACE,model_diagnose,
                     set_random_seed,load_data,PALACE_Encoder_v2,MaskedSoftmaxCELoss,
                     assign_gpu,init_weights_v2,setup_gpu,PALACE_Decoder_v2)
 
@@ -83,7 +83,7 @@ def main(rank, world_size,piece,model_id):
 # ===============================Training======================================
 #%% Training
     loss_log = rf'PALACE_{model_id}.loss_accu.log'
-    data_dir = './data/PALACE_train.shuf.batch2.tsv_{0:04}'.format(piece)
+    data_dir = './data/PALACE_train.shuf.batch1.tsv_{0:04}'.format(piece)
     # data_dir = './data/fra.txt'
     #data_dir = './data/fake_sample_for_vocab.txt'
 
@@ -108,18 +108,26 @@ def main(rank, world_size,piece,model_id):
     tp3 = time.time()
 
     smi_encoder = PALACE_Encoder_v2(
-        len(src_vocab), args.feat_space_dim, args.ffn_num_hiddens, args.num_heads, args.smi_blks, args.dropout,device = device)
+        len(src_vocab), args.feat_space_dim, args.ffn_num_hiddens, args.num_heads,
+        args.smi_blks, args.dropout,args.prot_blks + args.cross_blks, args.dec_blks, device = device)
 
     prot_encoder = PALACE_Encoder_v2(
-        len(src_vocab), args.feat_space_dim, args.ffn_num_hiddens, args.num_heads, args.prot_blks, args.dropout, is_prot = True, num_steps = args.num_steps,device = device)
+        len(src_vocab), args.feat_space_dim, args.ffn_num_hiddens, args.num_heads,
+        args.prot_blks, args.dropout, args.prot_blks + args.cross_blks, args.dec_blks,
+        is_prot = True, num_steps = args.num_steps,device = device)
 
     cross_encoder = PALACE_Encoder_v2(
-        len(src_vocab), args.feat_space_dim, args.ffn_num_hiddens, args.num_heads, args.cross_blks, args.dropout, is_cross = True,device = device)
+        len(src_vocab), args.feat_space_dim, args.ffn_num_hiddens, args.num_heads,
+        args.cross_blks, args.dropout, args.prot_blks + args.cross_blks, args.dec_blks,
+        is_cross = True,device = device)
 
     decoder = PALACE_Decoder_v2(
-        len(tgt_vocab), args.feat_space_dim, args.ffn_num_hiddens, args.num_heads, args.dec_blks, args.dropout)
+        len(tgt_vocab), args.feat_space_dim, args.ffn_num_hiddens, args.num_heads,
+        args.dec_blks, args.dropout, args.prot_blks + args.cross_blks, args.dec_blks)
 
-    net = PALACE_v2(smi_encoder, prot_encoder, cross_encoder, decoder,args.feat_space_dim,args.ffn_num_hiddens,args.dropout)
+    net = PALACE_v2(smi_encoder, prot_encoder, cross_encoder, decoder,args.feat_space_dim,
+                    args.ffn_num_hiddens,args.dropout, args.prot_blks + args.cross_blks, args.dec_blks)
+
     # optimizer = torch.optim.Adam(net.parameters(), lr=args.lr)
     # optimizer = torch.optim.SGD(net.parameters(), args.lr,momentum=0.9)
     optimizer = torch.optim.NAdam(net.parameters(), args.lr)
@@ -142,7 +150,7 @@ def main(rank, world_size,piece,model_id):
 
     printer("=======================PALACE: training...=======================",print_=True)
     if first_train:
-        net_without_ddp.apply(init_weights_v2)
+        # net_without_ddp.apply(init_weights_v2) # deepnorm init implemented
         loss.apply(init_weights_v2)
 
         init = {
@@ -189,7 +197,7 @@ if __name__ == '__main__':
     # suppose we have `world_size` gpus
     world_size = int(sys.argv[2])
     # world_size = 1
-    model_id = 'v1'
+    model_id = 'v3'
 
     mp.spawn(
         main,

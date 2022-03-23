@@ -18,7 +18,7 @@ Contact: yihangjoe@foxmail.com
 import pandas as pd
 import matplotlib.pyplot as plt
 
-world_size = 1
+world_size = 5
 def split_(str_):
     return str_.split(':')[1]
 loss = pd.read_csv(r'../PALACE_v2.loss_accu.log',sep='\t',header=None)[2].apply(split_).\

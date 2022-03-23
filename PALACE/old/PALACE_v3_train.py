@@ -29,7 +29,7 @@ import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
 
-from modules_v2 import (printer,PALACE_v2,logging,save_on_master,train_PALACE,model_diagnose,
+from modules_v3 import (printer,PALACE_v2,logging,save_on_master,train_PALACE,model_diagnose,
                     set_random_seed,load_data,PALACE_Encoder_v2,MaskedSoftmaxCELoss,
                     assign_gpu,init_weights_v2,setup_gpu,PALACE_Decoder_v2)
 
@@ -78,12 +78,12 @@ def main(rank, world_size,piece,model_id):
     set_random_seed(args.seed, rank>= 0)
     setup_gpu(rank, world_size)
     device = assign_gpu(rank)
-    diagnose = False
+    diagnose = True
 
 # ===============================Training======================================
 #%% Training
     loss_log = rf'PALACE_{model_id}.loss_accu.log'
-    data_dir = './data/PALACE_train.shuf.batch2.tsv_{0:04}'.format(piece)
+    data_dir = './data/PALACE_train.shuf.batch1.tsv_{0:04}'.format(piece)
     # data_dir = './data/fra.txt'
     #data_dir = './data/fake_sample_for_vocab.txt'
 
@@ -189,7 +189,7 @@ if __name__ == '__main__':
     # suppose we have `world_size` gpus
     world_size = int(sys.argv[2])
     # world_size = 1
-    model_id = 'v1'
+    model_id = 'v3'
 
     mp.spawn(
         main,
