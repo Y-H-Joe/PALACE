@@ -3,13 +3,13 @@
 ##SBATCH --partition=general
 ##SBATCH --partition=bigmem4
 ##SBATCH --partition=bigmem2
-##SBATCH --partition=gpu4
-#SBATCH --partition=gpu2
+#SBATCH --partition=gpu4
+##SBATCH --partition=gpu2
 ## sinfo
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=2
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=2
 #SBATCH --time=90-00:00:00
 ##SBATCH --mem=5G
 ##SBATCH --exclusive
@@ -41,11 +41,11 @@ module load cuda11.0/toolkit
 world_size=2
 
 
-for piece in 0 {833..1667}
+for piece in {0..1666}
 do
-     if test ! -f PALACE_models/PALACE_v1_piece_${piece}.pt;then
-        ~/anaconda3/envs/PALACE/bin/python PALACE_v1_train.py $piece $world_size
-     fi
+     if test ! -f PALACE_models/PALACE_v6_piece_${piece}.pt;then
+        ~/anaconda3/envs/PALACE/bin/python PALACE_v6_train.py $piece $world_size  
+      fi
 done
 
 # ~/anaconda3/envs/PALACE/bin/python PALACE_v2_train.py 0 $world_size

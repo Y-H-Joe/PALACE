@@ -1402,9 +1402,9 @@ def assign_gpu(rank):
     return torch.device('cpu')
 
 # setup the process groups
-def setup_gpu(rank, world_size,port = 12355):
+def setup_gpu(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = str(port) # 12355 or 12356
+    os.environ['MASTER_PORT'] = '12355'
     # nccl for linux, gloo for windows
     # dist.init_process_group("nccl", rank=rank, world_size=world_size)
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
@@ -1507,6 +1507,7 @@ def show_heatmaps(matrices, xlabel, ylabel, titles=None, figsize=(2.5, 2.5),
     fig.colorbar(pcm, ax=axes, shrink=0.6)
 
 def model_diagnose(model_id):
+    from modules import model_compare
     dict1 = torch.load(f'./PALACE_models/init_{model_id}.pt', map_location='cpu')['net']
     dict2 = torch.load('./PALACE_models/checkpoint_{}.pt'.format(model_id), map_location='cpu')['net']
     model_compare(dict1,dict2)
@@ -1547,7 +1548,7 @@ def init_weights(m,use = 'xavier_uniform_'):
     if use == 'orthogonal_':
         if type(m) == nn.Linear:
             nn.init.orthogonal_(m.weight)
-
+            
 
 def init_weights_v2(m,use = 'xavier_uniform_'):
     if use == 'xavier_normal_':
@@ -1596,7 +1597,7 @@ def init_weights_v2(m,use = 'xavier_uniform_'):
         except: pass
         try: nn.init.orthogonal_(m.in_proj_bias.data)
         except: pass
-
+        
 def train_PALACE(piece,net, data_iter,optimizer,scheduler, loss, num_epochs, tgt_vocab,
                  device,loss_log, model_id, diagnose = False):
     """训练序列到序列模型

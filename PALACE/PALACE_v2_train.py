@@ -60,9 +60,9 @@ def main(rank, world_size,piece,model_id):
             # time steps/window size,ref d2l 8.1 and 8.3
             self.num_steps = 300
             # learning rate
-            self.lr = 0.0001
+            self.lr = 0.00001
             # number of epochs
-            self.num_epochs = 100 # 30 for 4 gpus
+            self.num_epochs = 10 # 30 for 4 gpus
             # feed forward intermidiate number of hiddens
             self.ffn_num_hiddens = 64 # 64
             # number of heads
@@ -76,7 +76,10 @@ def main(rank, world_size,piece,model_id):
 
     # set the cuda backend seed
     set_random_seed(args.seed, rank>= 0)
-    setup_gpu(rank, world_size)
+    try:
+        setup_gpu(rank, world_size,12355)
+    except:
+        setup_gpu(rank, world_size,12356)
     device = assign_gpu(rank)
     diagnose = False
 

@@ -1647,9 +1647,9 @@ def assign_gpu(rank):
     return torch.device('cpu')
 
 # setup the process groups
-def setup_gpu(rank, world_size):
+def setup_gpu(rank, world_size,port = 12355):
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_PORT'] = str(port) # 12355 or 12356
     # nccl for linux, gloo for windows
     # dist.init_process_group("nccl", rank=rank, world_size=world_size)
     dist.init_process_group("gloo", rank=rank, world_size=world_size)

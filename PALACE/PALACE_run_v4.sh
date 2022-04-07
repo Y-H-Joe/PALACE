@@ -41,11 +41,11 @@ module load cuda11.0/toolkit
 world_size=2
 
 
-for piece in 0 {833..1667}
+for piece in {0..1666}
 do
-     if test ! -f PALACE_models/PALACE_v1_piece_${piece}.pt;then
-        ~/anaconda3/envs/PALACE/bin/python PALACE_v1_train.py $piece $world_size
-     fi
+     if test ! -f PALACE_models/PALACE_v4_piece_${piece}.pt;then
+        ~/anaconda3/envs/PALACE/bin/python PALACE_v4_train.py $piece $world_size  
+      fi
 done
 
 # ~/anaconda3/envs/PALACE/bin/python PALACE_v2_train.py 0 $world_size

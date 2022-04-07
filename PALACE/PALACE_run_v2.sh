@@ -43,7 +43,9 @@ world_size=2
 
 for piece in {1..1666}
 do
-     ~/anaconda3/envs/PALACE/bin/python PALACE_v2_train.py $piece $world_size  
+     if test ! -f PALACE_models/PALACE_v2_piece_${piece}.pt;then
+        ~/anaconda3/envs/PALACE/bin/python PALACE_v2_train.py $piece $world_size  
+      fi
 done
 
 # ~/anaconda3/envs/PALACE/bin/python PALACE_v2_train.py 0 $world_size  

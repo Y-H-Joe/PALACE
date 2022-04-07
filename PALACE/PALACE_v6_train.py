@@ -86,7 +86,7 @@ def main(rank, world_size,piece,model_id):
 # ===============================Training======================================
 #%% Training
     loss_log = rf'PALACE_{model_id}.loss_accu.log'
-    data_dir = './data/PALACE_train.shuf.batch1.tsv_{0:04}'.format(piece)
+    data_dir = './data/PALACE_train.shuf.batch2.tsv_{0:04}'.format(piece)
     # data_dir = './data/fra.txt'
     #data_dir = './data/fake_sample_for_vocab.txt'
 
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     # suppose we have `world_size` gpus
     world_size = int(sys.argv[2])
     # world_size = 1
-    model_id = 'v3'
+    model_id = 'v6'
 
     mp.spawn(
         main,

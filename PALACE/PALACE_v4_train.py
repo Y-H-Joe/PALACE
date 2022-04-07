@@ -47,10 +47,10 @@ def main(rank, world_size,piece,model_id):
             # notation protein length (any length of protein will be projected to fix length)
             # self.prot_nota_len = 2 # 1024
             # number of encoder/decoder blocks
-            self.prot_blks = 5 # 5
-            self.smi_blks = 5 # 5
-            self.cross_blks = 9 # 9
-            self.dec_blks = 14 # 14
+            self.prot_blks = 4 # 5
+            self.smi_blks = 4 # 5
+            self.cross_blks = 4 # 9
+            self.dec_blks = 8 # 14
             # dropout ratio for AddNorm,PositionalEncoding,DotProductMixAttention,ProteinEncoding
             self.dropout = 0.01
             # number of samples using per train
@@ -86,7 +86,7 @@ def main(rank, world_size,piece,model_id):
 # ===============================Training======================================
 #%% Training
     loss_log = rf'PALACE_{model_id}.loss_accu.log'
-    data_dir = './data/PALACE_train.shuf.batch1.tsv_{0:04}'.format(piece)
+    data_dir = './data/PALACE_train.shuf.batch2.tsv_{0:04}'.format(piece)
     # data_dir = './data/fra.txt'
     #data_dir = './data/fake_sample_for_vocab.txt'
 
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     # suppose we have `world_size` gpus
     world_size = int(sys.argv[2])
     # world_size = 1
-    model_id = 'v3'
+    model_id = 'v4'
 
     mp.spawn(
         main,
