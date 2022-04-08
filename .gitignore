@@ -839,3 +839,9 @@ PALACE/prot_models/prose/prose_dlm_3x1024.sav
 *.sav
 *.bin
 *.pt
+PALACE/data/USPTO_STEREO/Jin_USPTO_1product_test.txt
+PALACE/data/USPTO_STEREO/Jin_USPTO_1product_train.txt
+PALACE/data/USPTO_STEREO/Jin_USPTO_1product_valid.txt
+PALACE/data/USPTO_STEREO/PALACE_USPTO_STEREO_valid.tsv
+PALACE/data/USPTO_MIT/PALACE_USPTO_MIT_train.tsv
+PALACE/data/USPTO_MIT/PALACE_USPTO_MIT_train.tsv

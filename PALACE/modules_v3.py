@@ -458,6 +458,34 @@ class PALACE_v2(nn.Module):
 
         return self.decoder(dec_X, dec_state)
 
+
+class PALACE_SMILES(nn.Module):
+    """编码器-解码器架构的基类
+    """
+    def __init__(self, smi_encoder,decoder,
+                 feat_space_dim,ffn_num_hiddens,dropout, num_enc_blks, num_dec_blks, **kwargs):
+        super(PALACE_v2, self).__init__(**kwargs)
+        self.smi_encoder = smi_encoder
+        self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
+        self.addnorm = AddNorm_v2(feat_space_dim, dropout, 'enc', num_enc_blks, num_dec_blks)
+        self.decoder = decoder
+
+        # deepnorm init
+        beta = 0.87 * (num_enc_blks ** 4 * num_dec_blks) ** (-0.0625)
+        nn.init.xavier_normal_(self.ffn.dense1.weight, gain = beta)
+        nn.init.xavier_normal_(self.ffn.dense2.weight, gain = beta)
+
+    def forward(self, X, dec_X, valid_lens, *args):
+        # Y_hat, _ = net((X_prot, X), dec_input, (prot_valid_len,X_valid_len))
+        # X_smi: tensor([batch_size,num_steps])
+        enc_valid_lens = valid_lens
+        X_smi = self.smi_encoder(X, enc_valid_lens, *args)
+
+        dec_state = self.decoder.init_state(X_smi,enc_valid_lens, *args)
+        #printer("PALACE","dec_state",dec_state)
+
+        return self.decoder(dec_X, dec_state)
+
 # ==============================Model building=================================
 #%% Model building
 
@@ -1322,7 +1350,7 @@ def retrieve_vocab(vocab_dir):
     with open(vocab_dir,'rb') as r:
         return pickle.load(r)
 
-def creat_vocab(file_path = './prot_models/embedding/vocab.txt'):
+def creat_vocab(file_path = './vocab/smi_vocab_v2.txt'):
     """
     file_path = './prot_models/embedding/vocab.txt'
     """
@@ -1340,9 +1368,8 @@ def creat_vocab(file_path = './prot_models/embedding/vocab.txt'):
 # =============================================================================
     with open(file_path,'r') as r:
         source = [[x.strip()] for x in r.readlines()]
-    vocab = Vocab(source, min_freq=0,reserved_tokens=['<pad>'])
-    vocab
-    save_vocab(vocab,r'./vocab/prot_vocab.pkl')
+    vocab = Vocab(source, min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
+    save_vocab(vocab,r'./vocab/smi_vocab_v2.pkl')
     return vocab
 
 def prot_to_features_bert(prot : list, trained_model_dir: str, device: str, prot_read_batch_size: int):
@@ -1843,6 +1870,82 @@ def init_weights_v2(m,use = 'xavier_uniform_'):
 
 
 def train_PALACE(piece,net, data_iter,optimizer,scheduler, loss, num_epochs, tgt_vocab,
+                 device,loss_log, model_id, diagnose = False):
+    """训练序列到序列模型
+    """
+    net.train()
+    for epoch in range(num_epochs):
+        timer = Timer()
+        metric = Accumulator(2)  # 训练损失总和，词元数量
+        #assert trained_model_dir is not None, "trained model is not available."
+        correct = 0
+        total_seq = 0
+        data_iter.sampler.set_epoch(epoch)
+        for i,batch in enumerate(data_iter):
+            # print(f"batch: {batch}\n")
+            optimizer.zero_grad()
+            X_prot,prot_valid_len, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
+            # bos: torch.Size([batch_size, 1])
+            bos = torch.tensor([tgt_vocab['<bos>']] * Y.shape[0],device=device).reshape(-1, 1)
+
+            # dec_input: torch.Size([batch_size, num_steps])
+            # removed the last tok in each sample of Y: (Y: [batch_size, num_steps-1])
+            # add bos tok in begining of each sample of Y: (dec_input[batch_size, num_steps])
+            dec_input = torch.cat([bos, Y[:, :-1]], 1)  # force teaching
+            printer("train_PALACE:","X_prot",X_prot.shape)
+            printer("train_PALACE:","X",X.shape)
+            # Y_hat: (batch_size,num_steps,vocab_size)
+            # Y: (batch_size,num_steps)
+            Y_hat, _ = net([X_prot, X], dec_input, [prot_valid_len,X_valid_len])
+            # loss and backward
+            l = loss(Y_hat, Y, Y_valid_len, epoch, diagnose, model_id)
+            l.sum().backward() # 损失函数的标量进行“反向传播”
+            grad_clipping(net, 1, diagnose)
+            num_tokens = Y_valid_len.sum()
+            optimizer.step()
+            with torch.no_grad():
+                loss_sum = l.sum()
+                metric.add(loss_sum, num_tokens)
+
+            # accuracy
+            batch_size = Y_hat.shape[0]
+            total_seq += batch_size
+            num_steps = Y_hat.shape[1]
+            preds = Y_hat.argmax(dim=2).type(torch.int32)
+            for i in range(batch_size):
+                p, y = preds[i], Y[i]
+                if epoch % 90 == 1 and i == 1 and diagnose: # 8
+                    print(f"p:{p}")
+                    print(f"p shape:{p.shape}")
+                    print(f"y:{y}")
+                    print(f"y shape:{y.shape}")
+                try: y_eos = (y == tgt_vocab['<eos>']).nonzero()[0].item()
+                except: y_eos = num_steps
+                try: p_eos = (p == tgt_vocab['<eos>']).nonzero()[0].item()
+                except: p_eos = num_steps
+                p_valid = p[:p_eos]
+                y_valid = y[:y_eos]
+                if epoch % 90 == 1 and i == 1 and diagnose:
+                    print(f"p_valid:{p_valid}")
+                    print(f"p_valid shape:{p_valid.shape}")
+                    print(f"y_valid:{y_valid}")
+                    print(f"y_valid shape:{y_valid.shape}")
+                    print(f"lossCE weight:{loss.weight}")
+                if torch.equal(p_valid, y_valid): correct += 1
+
+        if diagnose and epoch % 30 == 0: grad_diagnose(net, model_id)
+
+        scheduler.step(loss_sum)
+        # scheduler.step()
+
+        loss_ = metric[0] / metric[1]
+        accuracy = correct / total_seq
+        with open(loss_log,'a') as o:
+            o.write(f"piece:{piece}\tepoch:{epoch}\tloss:{loss_:.8f}\taccuracy:{accuracy:.8f}\tlr:{optimizer.param_groups[0]['lr']}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n")
+    dist.barrier()
+
+
+def train_PALACE_SMILES(piece,net, data_iter,optimizer,scheduler, loss, num_epochs, tgt_vocab,
                  device,loss_log, model_id, diagnose = False):
     """训练序列到序列模型
     """
