@@ -47,12 +47,12 @@ def main(rank, world_size,piece,model_id):
             # notation protein length (any length of protein will be projected to fix length)
             # self.prot_nota_len = 2 # 1024
             # number of encoder/decoder blocks
-            self.smi_blks = 4 # 5
-            self.dec_blks = 4 # 14
+            self.smi_blks = 5 # 5
+            self.dec_blks = 14 # 14
             # dropout ratio for AddNorm,PositionalEncoding,DotProductMixAttention,ProteinEncoding
             self.dropout = 0.01
             # number of samples using per train
-            self.batch_size = 16 # 20 when 2 gpus, 16 when 4 gpus
+            self.batch_size = 10 # 20 when 2 gpus, 16 when 4 gpus
             # number of protein reading when trans protein to features using pretrained BERT
             #self.prot_read_batch_size = 6
             # time steps/window size,ref d2l 8.1 and 8.3
@@ -60,7 +60,7 @@ def main(rank, world_size,piece,model_id):
             # learning rate
             self.lr = 0.00001
             # number of epochs
-            self.num_epochs = 10 # 30 for 4 gpus
+            self.num_epochs = 100 # 30 for 4 gpus
             # feed forward intermidiate number of hiddens
             self.ffn_num_hiddens = 64 # 64
             # number of heads
@@ -84,20 +84,19 @@ def main(rank, world_size,piece,model_id):
 # ===============================Training======================================
 #%% Training
     loss_log = rf'PALACE_{model_id}.loss_accu.log'
-    data_dir = './data/PALACE_train.shuf.batch1.tsv_{0:04}'.format(piece)
+    data_dir = f'./data/PALACE_USPTO_MIT_train.final.tsv_{0:04}'.format(piece)
     # data_dir = './data/fra.txt'
     #data_dir = './data/fake_sample_for_vocab.txt'
-
     if int(piece) == 0:
         first_train = True
-        args.num_epochs = 1000 # trick, use small batch deep epoch to init parameters
+        # args.num_epochs = 1000 # trick, use small batch deep epoch to init parameters
     else: first_train = False
 
 
     printer("=======================PALACE: loading data...=======================",print_=True)
     # if not first train, will use former vocab
     tp1 = time.time()
-    vocab_dir = ['./vocab/merge_vocab.pkl','./vocab/merge_vocab.pkl','./vocab/prot_vocab.pkl']
+    vocab_dir = ['./vocab/smi_vocab_v2.pkl','./vocab/smi_vocab_v2.pkl','./vocab/prot_vocab.pkl']
     # vocab_dir = None
     data_iter, src_vocab, tgt_vocab, prot_vocab = load_data(rank, world_size,
             data_dir,args.batch_size, args.num_steps, device, vocab_dir)
@@ -110,15 +109,15 @@ def main(rank, world_size,piece,model_id):
 
     smi_encoder = PALACE_Encoder_v2(
         len(src_vocab), args.feat_space_dim, args.ffn_num_hiddens, args.num_heads,
-        args.smi_blks, args.dropout,args.prot_blks + args.cross_blks, args.dec_blks, device = device)
+        args.smi_blks, args.dropout,args.smi_blks, args.dec_blks, device = device)
 
 
     decoder = PALACE_Decoder_v2(
         len(tgt_vocab), args.feat_space_dim, args.ffn_num_hiddens, args.num_heads,
-        args.dec_blks, args.dropout, args.prot_blks + args.cross_blks, args.dec_blks)
+        args.dec_blks, args.dropout, args.smi_blks, args.dec_blks)
 
     net = PALACE_SMILES(smi_encoder, decoder,args.feat_space_dim,
-                    args.ffn_num_hiddens,args.dropout, args.prot_blks + args.cross_blks, args.dec_blks)
+                    args.ffn_num_hiddens,args.dropout, args.smi_blks, args.dec_blks)
 
     # optimizer = torch.optim.Adam(net.parameters(), lr=args.lr)
     # optimizer = torch.optim.SGD(net.parameters(), args.lr,momentum=0.9)
@@ -151,14 +150,14 @@ def main(rank, world_size,piece,model_id):
         'scheduler': scheduler.state_dict(),
         'loss': loss.state_dict()}
 
-        save_on_master(init, f'./PALACE_models/SMILES_init_{model_id}.pt')
+        save_on_master(init, f'./PALACE_models/PALACE_{model_id}_init.pt')
     else:
-        checkpoint_path = './PALACE_models/checkpoint_SMILES_{}.pt'.format(model_id)
+        checkpoint_path = f'./PALACE_models/checkpoint_PALACE_{model_id}.pt'
         checkpoint = torch.load(checkpoint_path, map_location='cpu')
         # optimizer.load_state_dict(checkpoint['optimizer'])
-        net_without_ddp.load_state_dict(checkpoint['net'])
+        net_without_ddp.load_state_dict(checkpoint['net'],strict = False)
         # scheduler.load_state_dict(checkpoint['scheduler'])
-        loss.load_state_dict(checkpoint['loss'])
+        loss.load_state_dict(checkpoint['loss'],strict = False)
     tp5 = time.time()
     train_PALACE_SMILES(piece, net, data_iter, optimizer,scheduler,loss, args.num_epochs, tgt_vocab, device, loss_log, model_id, diagnose)
     tp6 = time.time()
@@ -172,8 +171,8 @@ def main(rank, world_size,piece,model_id):
         'scheduler': scheduler.state_dict(),
         'loss': loss.state_dict()}
 
-    save_on_master(checkpoint, './PALACE_models/PALACE_SMILES_{}_piece_{}.pt'.format(model_id,piece))
-    save_on_master(checkpoint, f'./PALACE_models/checkpoint_SMILES_{model_id}.pt')
+    save_on_master(checkpoint, './PALACE_models/PALACE_{}_piece_{}.pt'.format(model_id,piece))
+    save_on_master(checkpoint, f'./PALACE_models/checkpoint_PALACE_{model_id}.pt')
 
     # clean up
     logging.shutdown()
@@ -189,7 +188,7 @@ if __name__ == '__main__':
     # suppose we have `world_size` gpus
     world_size = int(sys.argv[2])
     # world_size = 1
-    model_id = 'v3'
+    model_id = 'USPTO_MIT'
 
     mp.spawn(
         main,

@@ -845,3 +845,7 @@ PALACE/data/USPTO_STEREO/Jin_USPTO_1product_valid.txt
 PALACE/data/USPTO_STEREO/PALACE_USPTO_STEREO_valid.tsv
 PALACE/data/USPTO_MIT/PALACE_USPTO_MIT_train.tsv
 PALACE/data/USPTO_MIT/PALACE_USPTO_MIT_train.tsv
+*.tsv
+*.tsv
+PALACE/data/USPTO_MIT/test.txt
+PALACE/data/USPTO_MIT/train.txt

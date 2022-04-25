@@ -38,7 +38,6 @@ with open(PALACE_dict_v2,'w') as w:
     for i in PALACE_dict + difference:
         w.write(i + '\n')
 
-from ..modules_v3 import creat_vocab
 
 
 

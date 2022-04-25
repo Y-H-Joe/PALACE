@@ -54,13 +54,13 @@ def main(rank, world_size,piece,model_id):
             # dropout ratio for AddNorm,PositionalEncoding,DotProductMixAttention,ProteinEncoding
             self.dropout = 0.01
             # number of samples using per train
-            self.batch_size = 16 # 20 when 2 gpus, 16 when 4 gpus
+            self.batch_size = 14 # 20 when 2 gpus, 16 when 4 gpus
             # number of protein reading when trans protein to features using pretrained BERT
             #self.prot_read_batch_size = 6
             # time steps/window size,ref d2l 8.1 and 8.3
             self.num_steps = 300
             # learning rate
-            self.lr = 0.00001
+            self.lr = 0.00000009
             # number of epochs
             self.num_epochs = 10 # 30 for 4 gpus
             # feed forward intermidiate number of hiddens
@@ -97,7 +97,7 @@ def main(rank, world_size,piece,model_id):
     printer("=======================PALACE: loading data...=======================",print_=True)
     # if not first train, will use former vocab
     tp1 = time.time()
-    vocab_dir = ['./vocab/merge_vocab.pkl','./vocab/merge_vocab.pkl','./vocab/prot_vocab.pkl']
+    vocab_dir = ['./vocab/smi_vocab_v2.pkl','./vocab/smi_vocab_v2.pkl','./vocab/prot_vocab.pkl']
     # vocab_dir = None
     data_iter, src_vocab, tgt_vocab, prot_vocab = load_data(rank, world_size,
             data_dir,args.batch_size, args.num_steps, device, vocab_dir)

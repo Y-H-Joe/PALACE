@@ -464,16 +464,9 @@ class PALACE_SMILES(nn.Module):
     """
     def __init__(self, smi_encoder,decoder,
                  feat_space_dim,ffn_num_hiddens,dropout, num_enc_blks, num_dec_blks, **kwargs):
-        super(PALACE_v2, self).__init__(**kwargs)
+        super(PALACE_SMILES, self).__init__(**kwargs)
         self.smi_encoder = smi_encoder
-        self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
-        self.addnorm = AddNorm_v2(feat_space_dim, dropout, 'enc', num_enc_blks, num_dec_blks)
         self.decoder = decoder
-
-        # deepnorm init
-        beta = 0.87 * (num_enc_blks ** 4 * num_dec_blks) ** (-0.0625)
-        nn.init.xavier_normal_(self.ffn.dense1.weight, gain = beta)
-        nn.init.xavier_normal_(self.ffn.dense2.weight, gain = beta)
 
     def forward(self, X, dec_X, valid_lens, *args):
         # Y_hat, _ = net((X_prot, X), dec_input, (prot_valid_len,X_valid_len))
@@ -485,6 +478,20 @@ class PALACE_SMILES(nn.Module):
         #printer("PALACE","dec_state",dec_state)
 
         return self.decoder(dec_X, dec_state)
+
+class PALACE_prot(nn.Module):
+    """编码器-解码器架构的基类
+    """
+    def __init__(self, prot_encoder, feat_space_dim, class_num, **kwargs):
+        super(PALACE_prot, self).__init__(**kwargs)
+        self.prot_encoder = prot_encoder
+        self.dense1 = nn.Linear(feat_space_dim,class_num)
+        self.dense2 = nn.Linear(class_num,class_num)
+        self.softmax = nn.Softmax()
+
+    def forward(self, X_prot,valid_lens, *args):
+         prot_feat = self.prot_encoder(X_prot, valid_lens, *args)
+         return self.softmax(self.dense2(self.dense1(prot_feat)))
 
 # ==============================Model building=================================
 #%% Model building
@@ -505,10 +512,11 @@ def grad_clipping(net, theta, diagnose):
     if diagnose:
         for p,n in zip(params,names):
             try:
+                print(f'paraname: {n}')
                 torch.sum((p.grad ** 2))
             except Exception as e:
                 import sys
-                sys.exit(f"{e}\nerror param:{n}\n{p}")
+                sys.exit(f"{e}\nerror param: {n}\n{p}\n{n}.shape: {p.shape}\n{n}.grad:\n{p.grad}")
 
     norm = torch.sqrt(sum(torch.sum((p.grad ** 2)) for p in params))
 
@@ -1966,17 +1974,91 @@ def train_PALACE_SMILES(piece,net, data_iter,optimizer,scheduler, loss, num_epoc
 
             # dec_input: torch.Size([batch_size, num_steps])
             # removed the last tok in each sample of Y: (Y: [batch_size, num_steps-1])
-            # add bos tok in begining of each sample of Y: (dec_input[batch_size, num_steps])
+            # add bos tok in beginning of each sample of Y: (dec_input[batch_size, num_steps])
             dec_input = torch.cat([bos, Y[:, :-1]], 1)  # force teaching
             printer("train_PALACE:","X_prot",X_prot.shape)
             printer("train_PALACE:","X",X.shape)
             # Y_hat: (batch_size,num_steps,vocab_size)
             # Y: (batch_size,num_steps)
-            Y_hat, _ = net([X_prot, X], dec_input, [prot_valid_len,X_valid_len])
+            Y_hat, _ = net(X, dec_input, X_valid_len)
             # loss and backward
             l = loss(Y_hat, Y, Y_valid_len, epoch, diagnose, model_id)
             l.sum().backward() # 损失函数的标量进行“反向传播”
             grad_clipping(net, 1, diagnose)
+            num_tokens = Y_valid_len.sum()
+            optimizer.step()
+            with torch.no_grad():
+                loss_sum = l.sum()
+                metric.add(loss_sum, num_tokens)
+
+            # accuracy
+            batch_size = Y_hat.shape[0]
+            total_seq += batch_size
+            num_steps = Y_hat.shape[1]
+            preds = Y_hat.argmax(dim=2).type(torch.int32)
+            for i in range(batch_size):
+                p, y = preds[i], Y[i]
+                if epoch % 90 == 1 and i == 1 and diagnose: # 8
+                    print(f"p:{p}")
+                    print(f"p shape:{p.shape}")
+                    print(f"y:{y}")
+                    print(f"y shape:{y.shape}")
+                try: y_eos = (y == tgt_vocab['<eos>']).nonzero()[0].item()
+                except: y_eos = num_steps
+                try: p_eos = (p == tgt_vocab['<eos>']).nonzero()[0].item()
+                except: p_eos = num_steps
+                p_valid = p[:p_eos]
+                y_valid = y[:y_eos]
+                if epoch % 90 == 1 and i == 1 and diagnose:
+                    print(f"p_valid:{p_valid}")
+                    print(f"p_valid shape:{p_valid.shape}")
+                    print(f"y_valid:{y_valid}")
+                    print(f"y_valid shape:{y_valid.shape}")
+                    print(f"lossCE weight:{loss.weight}")
+                if torch.equal(p_valid, y_valid): correct += 1
+
+        if diagnose and epoch % 30 == 0: grad_diagnose(net, model_id)
+
+        scheduler.step(loss_sum)
+        # scheduler.step()
+
+        loss_ = metric[0] / metric[1]
+        accuracy = correct / total_seq
+        with open(loss_log,'a') as o:
+            o.write(f"piece:{piece}\tepoch:{epoch}\tloss:{loss_:.8f}\taccuracy:{accuracy:.8f}\tlr:{optimizer.param_groups[0]['lr']}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n")
+    dist.barrier()
+
+def train_PALACE_prot(piece,prot_net, data_iter,optimizer,scheduler, loss, num_epochs, tgt_vocab,
+                      device,loss_log, model_id, diagnose = False):
+    """训练序列到序列模型
+    """
+    prot_net.prot_encoder.eval()
+    prot_net.dense1.train()
+    prot_net.dense2.train()
+    prot_net.softmax.train()
+
+    for epoch in range(num_epochs):
+        timer = Timer()
+        metric = Accumulator(2)  # 训练损失总和，词元数量
+        #assert trained_model_dir is not None, "trained model is not available."
+        correct = 0
+        total_seq = 0
+        data_iter.sampler.set_epoch(epoch)
+        for i,batch in enumerate(data_iter):
+            # print(f"batch: {batch}\n")
+            optimizer.zero_grad()
+            X_prot,prot_valid_len, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
+
+            printer("train_PALACE:","X_prot",X_prot.shape)
+            # Y_hat: (batch_size,num_steps,class_num)
+            # Y: (batch_size,num_steps)
+            Y_hat = prot_net(X_prot, prot_valid_len)
+            Y_hat = Y_hat.permute(0, 2, 1)
+            # loss and backward
+            l = loss(Y_hat, Y)
+            l.sum().backward() # 损失函数的标量进行“反向传播”
+            grad_clipping(prot_net, 1, diagnose)
+
             num_tokens = Y_valid_len.sum()
             optimizer.step()
             with torch.no_grad():

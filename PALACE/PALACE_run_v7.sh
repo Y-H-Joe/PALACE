@@ -3,8 +3,8 @@
 ##SBATCH --partition=general
 ##SBATCH --partition=bigmem4
 ##SBATCH --partition=bigmem2
-#SBATCH --partition=gpu4
-##SBATCH --partition=gpu2
+##SBATCH --partition=gpu4
+#SBATCH --partition=gpu2
 ## sinfo
 
 #SBATCH --nodes=1
