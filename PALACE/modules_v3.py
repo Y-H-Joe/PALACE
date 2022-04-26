@@ -485,13 +485,17 @@ class PALACE_prot(nn.Module):
     def __init__(self, prot_encoder, feat_space_dim, class_num, **kwargs):
         super(PALACE_prot, self).__init__(**kwargs)
         self.prot_encoder = prot_encoder
-        self.dense1 = nn.Linear(feat_space_dim,class_num)
-        self.dense2 = nn.Linear(class_num,class_num)
+        self.dense1 = nn.Linear(feat_space_dim,feat_space_dim)
+        self.dense2 = nn.Linear(feat_space_dim,feat_space_dim)
+        self.dense3 = nn.Linear(feat_space_dim,class_num)
         self.softmax = nn.Softmax()
 
     def forward(self, X_prot,valid_lens, *args):
+         # prot_feat size: batch_size * num_steps * feat_space_dim
          prot_feat = self.prot_encoder(X_prot, valid_lens, *args)
-         return self.softmax(self.dense2(self.dense1(prot_feat)))
+         # prot_feat_mean size: batch_size * feat_space_dim
+         prot_feat_mean = prot_feat.mean(dim = 1)
+         return self.softmax(self.dense3(self.dense2(self.dense1(prot_feat_mean))))
 
 # ==============================Model building=================================
 #%% Model building
@@ -904,8 +908,6 @@ class AddNorm(nn.Module):
 
 class AddNorm_v2(nn.Module):
     """implemented DeepNorm.
-        if part == 'enc':
-            alpha =
     drop out, add and layer normalization"""
     def __init__(self, feat_space_dim, dropout, part, num_enc_blks, num_dec_blks, **kwargs):
         super(AddNorm_v2, self).__init__(**kwargs)
@@ -1579,6 +1581,15 @@ def build_array_nmt(lines, vocab, num_steps, add_eos = True):
         astype(array != vocab['<pad>'], torch.int32), 1)
     return array, valid_len
 
+def load_array(rank, world_size,data_arrays, batch_size,pin_memory=False, num_workers=0):
+    """构造一个PyTorch数据迭代器
+    """
+    dataset = data.TensorDataset(*data_arrays)
+    sampler = DistributedSampler(dataset, num_replicas=world_size,\
+                                 rank=rank, shuffle=False, drop_last=False)
+    dataloader = data.DataLoader(dataset, batch_size=batch_size, pin_memory=pin_memory, \
+                            num_workers=num_workers, drop_last=False, shuffle=False, sampler=sampler)
+    return dataloader
 
 def load_data(rank, world_size,data_dir,batch_size, num_steps, device, vocab_dir):
     """返回翻译数据集的迭代器和词表
@@ -1615,21 +1626,25 @@ def load_data(rank, world_size,data_dir,batch_size, num_steps, device, vocab_dir
     # the first dim of the following are all N (total number of samples)
     # data_arrays = (prot_features, src_array, src_valid_len, tgt_array, tgt_valid_len)
     data_arrays = (prot_array, prot_valid_len, src_array, src_valid_len, tgt_array, tgt_valid_len)
-
-    def load_array(rank, world_size,data_arrays, batch_size,pin_memory=False, num_workers=0):
-        """构造一个PyTorch数据迭代器
-        """
-        dataset = data.TensorDataset(*data_arrays)
-        sampler = DistributedSampler(dataset, num_replicas=world_size,\
-                                     rank=rank, shuffle=False, drop_last=False)
-        dataloader = data.DataLoader(dataset, batch_size=batch_size, pin_memory=pin_memory, \
-                                num_workers=num_workers, drop_last=False, shuffle=False, sampler=sampler)
-        return dataloader
-
     data_iter = load_array(rank, world_size,data_arrays, batch_size)
 
     return data_iter, src_vocab, tgt_vocab, prot_vocab
 
+def load_data_EC(rank, world_size, batch_size, data_dir, vocab_dir, prot_col = 1, label_col = 2, sep = '\t'):
+    prot = []
+    label = []
+    with open(data_dir,'r',encoding='utf-8') as r:
+        for line in r:
+            line_split = line.strip().split(sep)
+            prot.append(list(line_split[prot_col].upper()))
+            label.append(int(line_split[label_col]))
+    prot_vocab = retrieve_vocab(vocab_dir[0])
+    src_vocab = retrieve_vocab(vocab_dir[1])
+    prot_array, prot_valid_len = build_array_nmt(prot, prot_vocab, 2500, add_eos = False) # maxium prot is 2500
+    data_arrays = (prot_array, prot_valid_len, torch.tensor(label))
+    data_iter = load_array(rank, world_size,data_arrays, batch_size)
+
+    return data_iter,prot_vocab, src_vocab
 
 # =================================GPUs=======================================
 #%% GPUs
@@ -2028,48 +2043,53 @@ def train_PALACE_SMILES(piece,net, data_iter,optimizer,scheduler, loss, num_epoc
             o.write(f"piece:{piece}\tepoch:{epoch}\tloss:{loss_:.8f}\taccuracy:{accuracy:.8f}\tlr:{optimizer.param_groups[0]['lr']}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n")
     dist.barrier()
 
-def train_PALACE_prot(piece,prot_net, data_iter,optimizer,scheduler, loss, num_epochs, tgt_vocab,
+def train_PALACE_prot(piece,prot_net, data_iter,optimizer,scheduler, loss, num_epochs,
                       device,loss_log, model_id, diagnose = False):
-    """训练序列到序列模型
     """
-    prot_net.prot_encoder.eval()
-    prot_net.dense1.train()
-    prot_net.dense2.train()
-    prot_net.softmax.train()
+    train PALACE prot / EC task model
+    """
+    try:
+        prot_net.prot_encoder.eval()
+        prot_net.dense1.train()
+        prot_net.dense2.train()
+        prot_net.dense3.train()
+        prot_net.softmax.train()
+    except:
+        prot_net.module.prot_encoder.eval()
+        prot_net.module.dense1.train()
+        prot_net.module.dense2.train()
+        prot_net.module.dense3.train()
+        prot_net.module.softmax.train()
 
     for epoch in range(num_epochs):
         timer = Timer()
-        metric = Accumulator(2)  # 训练损失总和，词元数量
         #assert trained_model_dir is not None, "trained model is not available."
         correct = 0
         total_seq = 0
         data_iter.sampler.set_epoch(epoch)
+        running_loss = 0.0
         for i,batch in enumerate(data_iter):
-            # print(f"batch: {batch}\n")
             optimizer.zero_grad()
-            X_prot,prot_valid_len, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
+            X_prot,prot_valid_len,Y = [x.to(device) for x in batch]
 
             printer("train_PALACE:","X_prot",X_prot.shape)
-            # Y_hat: (batch_size,num_steps,class_num)
-            # Y: (batch_size,num_steps)
+            # Y_hat: (batch_size,class_num)
+            # Y: (batch_size)
             Y_hat = prot_net(X_prot, prot_valid_len)
-            Y_hat = Y_hat.permute(0, 2, 1)
             # loss and backward
             l = loss(Y_hat, Y)
             l.sum().backward() # 损失函数的标量进行“反向传播”
             grad_clipping(prot_net, 1, diagnose)
-
-            num_tokens = Y_valid_len.sum()
             optimizer.step()
+
             with torch.no_grad():
                 loss_sum = l.sum()
-                metric.add(loss_sum, num_tokens)
 
             # accuracy
+            running_loss += l.item()
             batch_size = Y_hat.shape[0]
             total_seq += batch_size
-            num_steps = Y_hat.shape[1]
-            preds = Y_hat.argmax(dim=2).type(torch.int32)
+            preds = Y_hat.argmax(dim=1).type(torch.int32)
             for i in range(batch_size):
                 p, y = preds[i], Y[i]
                 if epoch % 90 == 1 and i == 1 and diagnose: # 8
@@ -2077,29 +2097,17 @@ def train_PALACE_prot(piece,prot_net, data_iter,optimizer,scheduler, loss, num_e
                     print(f"p shape:{p.shape}")
                     print(f"y:{y}")
                     print(f"y shape:{y.shape}")
-                try: y_eos = (y == tgt_vocab['<eos>']).nonzero()[0].item()
-                except: y_eos = num_steps
-                try: p_eos = (p == tgt_vocab['<eos>']).nonzero()[0].item()
-                except: p_eos = num_steps
-                p_valid = p[:p_eos]
-                y_valid = y[:y_eos]
-                if epoch % 90 == 1 and i == 1 and diagnose:
-                    print(f"p_valid:{p_valid}")
-                    print(f"p_valid shape:{p_valid.shape}")
-                    print(f"y_valid:{y_valid}")
-                    print(f"y_valid shape:{y_valid.shape}")
-                    print(f"lossCE weight:{loss.weight}")
-                if torch.equal(p_valid, y_valid): correct += 1
+                if torch.equal(p, y): correct += 1
 
-        if diagnose and epoch % 30 == 0: grad_diagnose(net, model_id)
+        if diagnose and epoch % 30 == 0: grad_diagnose(prot_net, model_id)
 
         scheduler.step(loss_sum)
         # scheduler.step()
 
-        loss_ = metric[0] / metric[1]
+        loss_ = running_loss / total_seq
         accuracy = correct / total_seq
         with open(loss_log,'a') as o:
-            o.write(f"piece:{piece}\tepoch:{epoch}\tloss:{loss_:.8f}\taccuracy:{accuracy:.8f}\tlr:{optimizer.param_groups[0]['lr']}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n")
+            o.write(f"piece:{piece}\tepoch:{epoch}\tloss:{loss_:.8f}\taccuracy:{accuracy:.8f}\tlr:{optimizer.param_groups[0]['lr']}\tseqs/sec:{total_seq / timer.stop():.1f}\tdevice: {str(device)}\n")
     dist.barrier()
 # ==============================Prediction=====================================
 #%% Prediction

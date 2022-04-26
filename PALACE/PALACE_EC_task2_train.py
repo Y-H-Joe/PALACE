@@ -35,8 +35,8 @@ import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
 
-from modules_v2 import (printer,PALACE_prot,logging,save_on_master,train_PALACE_prot,model_diagnose,
-                    set_random_seed,load_data,PALACE_Encoder_v2,
+from modules_v3 import (printer,PALACE_prot,logging,save_on_master,train_PALACE_prot,model_diagnose,
+                    set_random_seed,load_data_EC,PALACE_Encoder_v2,
                     assign_gpu,init_weights_v2,setup_gpu)
 
 
@@ -53,6 +53,8 @@ def main(rank, world_size,piece,model_id):
             # notation protein length (any length of protein will be projected to fix length)
             # number of encoder/decoder blocks
             self.prot_blks = 5 # 5
+            self.cross_blks = 9 # 9
+            self.dec_blks = 14 # 14
             # dropout ratio for AddNorm,PositionalEncoding,DotProductMixAttention,ProteinEncoding
             self.dropout = 0.01
             # number of samples using per train
@@ -62,15 +64,15 @@ def main(rank, world_size,piece,model_id):
             # time steps/window size,ref d2l 8.1 and 8.3
             self.num_steps = 300
             # learning rate
-            self.lr = 0.00000009
+            self.lr = 0.0001
             # number of epochs
-            self.num_epochs = 10 # 30 for 4 gpus
+            self.num_epochs = 30 # 30 for 4 gpus
             # feed forward intermidiate number of hiddens
             self.ffn_num_hiddens = 64 # 64
             # number of heads
             self.num_heads = 8 # 8
             # number of classes
-            self.class_num = 7
+            self.class_num = 8
 
     args = Args()
     assert args.feat_space_dim % args.num_heads == 0, "feat_space_dim % num_heads != 0."
@@ -84,32 +86,24 @@ def main(rank, world_size,piece,model_id):
 # ===============================Training======================================
 #%% Training
     loss_log = rf'PALACE_{model_id}.loss_accu.log'
-    data_dir = './data/PALACE_train.shuf.batch1.tsv_{0:04}'.format(piece)
-    ec_type = r'./vocab/EC/enzyme.types.1'
-    with open(ec_type,'r') as r:
-        ec_type_list = [int(x.strip()) for x in r.readlines()]
+    data_dir = rf'./data/PALACE_EC_task2.train.tsv_{0:04}'.format(piece)
 
     if int(piece) == 0: first_train = True
     else: first_train = False
 
     printer("=======================PALACE: loading data...=======================",print_=True)
-    # if not first train, will use former vocab
     tp1 = time.time()
-    vocab_dir = ['./vocab/smi_vocab_v2.pkl','./vocab/smi_vocab_v2.pkl','./vocab/prot_vocab.pkl']
-    # vocab_dir = None
-    data_iter, src_vocab, tgt_vocab, prot_vocab = load_data(rank, world_size,
-            data_dir,args.batch_size, args.num_steps, device, vocab_dir)
+    vocab_dir = ['./vocab/prot_vocab.pkl','./vocab/smi_vocab_v2.pkl']
+    data_iter,prot_vocab, src_vocab = load_data_EC(rank, world_size, args.batch_size, data_dir, vocab_dir)
     tp2 = time.time()
     printer("=======================loading data: {}s...=======================".format(tp2 - tp1),print_=True)
 
-
     printer("=======================PALACE: building model...=======================",print_=True)
     tp3 = time.time()
-
     # protein encoder at evaluation mode
     prot_encoder = PALACE_Encoder_v2(
         len(src_vocab), args.feat_space_dim, args.ffn_num_hiddens, args.num_heads,
-        args.prot_blks, args.dropout, is_prot = True, num_steps = args.num_steps,device = device)
+        args.prot_blks, args.dropout,args.prot_blks + args.cross_blks, args.dec_blks,is_prot = True, num_steps = args.num_steps,device = device)
     # freeze prot_encoder
     for param in prot_encoder.parameters():
         param.requires_grad = False
@@ -124,13 +118,11 @@ def main(rank, world_size,piece,model_id):
     tp4 = time.time()
     printer("=======================building model: {}s...=======================".format(tp4 - tp3),print_=True)
 
-
     printer("=======================PALACE: running on {}...=======================".format(device),print_=True)
     prot_net.to(device)
     loss.to(device)
     prot_net = torch.nn.parallel.DistributedDataParallel(prot_net,device_ids=[rank],output_device=rank,find_unused_parameters=True)
     net_without_ddp = prot_net.module
-
 
     printer("=======================PALACE: training...=======================",print_=True)
     if first_train:
@@ -142,8 +134,14 @@ def main(rank, world_size,piece,model_id):
         'optimizer': optimizer.state_dict(),
         'scheduler': scheduler.state_dict(),
         'loss': loss.state_dict()}
-
         save_on_master(init, f'./PALACE_models/PALACE_{model_id}_init.pt')
+        # transfer learning
+        checkpoint_path = r'./PALACE_models/PALACE_EC_task_init.pt'
+        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        # optimizer.load_state_dict(checkpoint['optimizer'])
+        net_without_ddp.load_state_dict(checkpoint['net'],strict = False)
+        # scheduler.load_state_dict(checkpoint['scheduler'])
+        loss.load_state_dict(checkpoint['loss'],strict = False)
     else:
         checkpoint_path = f'./PALACE_models/checkpoint_PALACE_{model_id}.pt'
         checkpoint = torch.load(checkpoint_path, map_location='cpu')
@@ -152,7 +150,7 @@ def main(rank, world_size,piece,model_id):
         # scheduler.load_state_dict(checkpoint['scheduler'])
         loss.load_state_dict(checkpoint['loss'],strict = False)
     tp5 = time.time()
-    train_PALACE_prot(piece,prot_net, data_iter,optimizer,scheduler, loss, args.num_epochs, tgt_vocab,
+    train_PALACE_prot(piece,prot_net, data_iter,optimizer,scheduler, loss, args.num_epochs,
                       device,loss_log, model_id, diagnose)
     tp6 = time.time()
     printer("=======================training: {}s...=======================".format(tp6 - tp5),print_=True)
@@ -182,16 +180,14 @@ if __name__ == '__main__':
     # suppose we have `world_size` gpus
     world_size = int(sys.argv[2])
     # world_size = 1
-    model_id = 'EC_1'
+    model_id = 'EC_task2'
 
-    """
     mp.spawn(
         main,
         args=(world_size,piece,model_id),
         nprocs=world_size
     )
-    """
-    main(0,world_size,piece,model_id)
+    # main(0,world_size,piece,model_id)
 
 
 
