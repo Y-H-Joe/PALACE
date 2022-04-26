@@ -64,7 +64,7 @@ def main(rank, world_size,piece,model_id):
             # time steps/window size,ref d2l 8.1 and 8.3
             self.num_steps = 300
             # learning rate
-            self.lr = 0.0001
+            self.lr = 0.00005
             # number of epochs
             self.num_epochs = 30 # 30 for 4 gpus
             # feed forward intermidiate number of hiddens
@@ -108,7 +108,7 @@ def main(rank, world_size,piece,model_id):
     for param in prot_encoder.parameters():
         param.requires_grad = False
     # feedforward layers, need training
-    prot_net = PALACE_prot(prot_encoder, args.feat_space_dim, args.class_num)
+    prot_net = PALACE_prot(prot_encoder, args.feat_space_dim, args.class_num, args.dropout, args.prot_blks, 1)
     # optimizer only optimize feedforward part
     optimizer = torch.optim.NAdam(filter(lambda p: p.requires_grad, prot_net.parameters()), args.lr)
     # schedular

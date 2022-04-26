@@ -40,10 +40,11 @@ Cm
 module load cuda11.0/toolkit
 world_size=2
 
-piece=0
+for piece in {0..14}
+do
 if test ! -f PALACE_models/PALACE_EC_task3_piece_${piece}.pt;then
     ~/anaconda3/envs/PALACE/bin/python PALACE_EC_task3_train.py $piece $world_size
 fi
-
+done
 
 # ~/anaconda3/envs/PALACE/bin/python PALACE_v2_train.py 0 $world_size

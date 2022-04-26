@@ -12,7 +12,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --time=90-00:00:00
 ##SBATCH --mem=5G
-##SBATCH --exclusive
+#SBATCH --exclusive
 #SBATCH --ntasks-per-node=2
 #SBATCH --gres=gpu:tesla:2
 ##SBATCH --job-name "yihang's job"
@@ -41,7 +41,7 @@ module load cuda11.0/toolkit
 world_size=2
 
 
-for piece in {0..7}
+for piece in {0..14}
 do
      if test ! -f PALACE_models/PALACE_EC_task1_piece_${piece}.pt;then
         ~/anaconda3/envs/PALACE/bin/python PALACE_EC_task1_train.py $piece $world_size
