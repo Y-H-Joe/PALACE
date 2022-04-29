@@ -1493,7 +1493,7 @@ def prot_to_features_prose(prot : list, device: str):
     model = ProSEMT.load_pretrained()
 
     # model to GPU
-    model.to(device)
+    model = model.to(device)
     model.eval()
 
     prot_features = []
@@ -2115,7 +2115,7 @@ def train_PALACE_prot(piece,prot_net, data_iter,optimizer,scheduler, loss, num_e
     dist.barrier()
 # ==============================Prediction=====================================
 #%% Prediction
-def predict_PALACE(net, src, prot_vocab, src_vocab, tgt_vocab, num_steps,
+def predict_PALACE(net, src, prot_vocab, smi_vocab, num_steps,
                     device,beam,save_attention_weights=False):
     """Predict for sequence to sequence.
     """
@@ -2126,94 +2126,47 @@ def predict_PALACE(net, src, prot_vocab, src_vocab, tgt_vocab, num_steps,
     # X_smi: smi1
     # source tokens to ids and truncate/pad source length
     X_prot, X_smi = src
-    X_smi, X_smi_valid_len = build_array_nmt(X_smi.split(' '), src_vocab, num_steps)
-    X_prot, X_prot_valid_len = build_array_nmt(list(X_prot), prot_vocab, 2500, add_eos = False)
+    X_smi, X_smi_valid_len = build_array_nmt([X_smi.split(' ')], smi_vocab, num_steps)
+    X_prot, X_prot_valid_len = build_array_nmt([list(X_prot)], prot_vocab, 2500, add_eos = False)
     # X_prot, X_smi became 2d tensor of idx
-    X_smi.to(device)
-    X_smi_valid_len.to(device)
-    X_prot.to(device)
-    X_prot_valid_len.to(device)
+    X_smi = X_smi.to(device)
+    X_smi_valid_len = X_smi_valid_len.to(device)
+    X_prot = X_prot.to(device)
+    X_prot_valid_len = X_prot_valid_len.to(device)
     # Add the batch axis
-    X_prot = torch.unsqueeze(torch.tensor(X_prot, dtype=torch.float, device=device), dim=0)
-    X_smi = torch.unsqueeze(torch.tensor(X_smi, dtype=torch.long, device=device), dim=0)
+    # X_prot = torch.unsqueeze(torch.tensor(X_prot, dtype=torch.float, device=device), dim=0)
+    # X_smi = torch.unsqueeze(torch.tensor(X_smi, dtype=torch.long, device=device), dim=0)
     printer("predict_PALACE","X_prot",X_prot.shape)
     printer("predict_PALACE","X_smi",X_smi.shape)
 
-    # enc_X: (1,num_steps)
-    enc_X = [X_prot,X_smi]
     X_prot_out = net.prot_encoder(X_prot,X_prot_valid_len)
     X_smi_out = net.smi_encoder(X_smi,X_smi_valid_len)
 
-    X_mix = X_prot_out * X_smi_out
-    X_mix = net.addnorm(net.ffn(X_mix),(X_mix+X_prot_out))
+    X_mix = X_prot_out + X_smi_out
+    X_mix = net.addnorm(net.ffn(X_mix),(X_mix+X_prot_out+X_smi_out) / torch.tensor(3))
 
-    enc_outputs = net.cross_encoder(enc_X, X_smi_valid_len)
-    dec_init_state = net.decoder.init_state(enc_outputs, X_smi_valid_len)
-
+    enc_outputs = net.cross_encoder(X_mix, X_smi_valid_len)
+    # init_dec_state = net.decoder.init_state(enc_outputs, X_smi_valid_len)
+    dec_state = net.decoder.init_state(enc_outputs, X_smi_valid_len)
+    init_dec_state = dec_state
     # Add the batch axis
     # dec_X: [[X]]
-    dec_X = torch.unsqueeze(torch.tensor([tgt_vocab['<bos>']], dtype=torch.long, device=device), dim=0)
-
-    # initial beam search
-    Y, dec_state = net.decoder(dec_X, dec_init_state)
-    # Y_top: (1,beam)
-    Y_top = torch.topk(Y,beam,dim=2,sorted = True).values.squeeze(dim=0)
-    # idx_top: (1,beam)
-    idx_top = torch.topk(Y,beam,dim=2,sorted = True).indices.squeeze(dim=0)
-    # beam_Y_top: (1,beam)
-    # beam_idx_top: (1,beam)
-    beam_Y_top = Y_top.clone().detach()
-    beam_idx_top = idx_top.clone().detach()
-    attention_weight_seq = []
-    eos_hit = [False for _ in range(beam)]
-    for _ in range(num_steps):
-        # for each top `beam` prediction likelihood, We use its token as input
-        # of the decoder at the next time step
-        Y_top_tmp = []
-        idx_top_tmp = []
-        for idx_loc,idx in enumerate(idx_top.squeeze(0)):
-            dec_X = idx.unsqueeze(0).unsqueeze(0)
-            # Y: (1,1,tgt_vocab_size) # batch_size, num_steps = 1
+    dec_X = torch.unsqueeze(torch.tensor([smi_vocab['<bos>']], dtype=torch.long, device=device), dim=0)
+    init_dec_X = dec_X
+    output_seqs = [[] for _ in range(beam)]
+    for idx in range(beam):
+        Y, dec_state = net.decoder(init_dec_X, init_dec_state)
+        dec_X = torch.topk(Y, beam, dim = 2, sorted = True).indices[...,idx]
+        for _ in range(num_steps - 1):
+            pred = dec_X.squeeze(dim=0).type(torch.int32).item()
+            if pred == smi_vocab['<eos>']:
+                break
+            output_seqs[idx].append(pred)
             Y, dec_state = net.decoder(dec_X, dec_state)
-            Y_top = torch.topk(Y,1,dim=2,sorted = True).values.item()
-            idx_top = torch.topk(Y,1,dim=2,sorted = True).indices.item()
-            if idx_top == tgt_vocab['<eos>']:
-                eos_hit[idx_loc] = True
-            if sum(eos_hit) == beam: break # break from beam loop
-            Y_top_tmp.append(Y_top)
-            idx_top_tmp.append(idx_top)
+            dec_X = Y.argmax(dim=2)
 
-        if sum(eos_hit) == beam: break # break from num_steps loop
-
-        beam_Y_top = torch.cat([beam_Y_top,torch.tensor([Y_top_tmp]).to(device)],dim=0)
-        beam_idx_top = torch.cat([beam_idx_top,torch.tensor([idx_top_tmp]).to(device)],dim=0)
-        idx_top = torch.tensor([idx_top_tmp]).to(device)
-
-        # Save attention weights (to be covered later)
-        if save_attention_weights:
-            attention_weight_seq.append(net.decoder.attention_weights)
-
-    beam_Y_top = beam_Y_top[1:]
-    beam_idx_top = beam_idx_top[1:] # remove the <bos>
-
-    # translation
-    beam_Y = beam_Y_top.sum(dim=0)
-    beam_rank = torch.topk(beam_Y,beam,sorted = True).indices
-    # rank of rank
-    beam_rank_rank = torch.topk(beam_rank,beam,sorted = True,largest = False).indices
-    beam_idx_top = beam_idx_top.transpose(0,1)[beam_rank_rank[:beam]].to('cpu').numpy()
-    # truncate
-    eos = tgt_vocab['<eos>']
-    output_seq = []
-    for idx in beam_idx_top:
-        idx = list(idx)
-        try:
-            trunc_point = idx.index(eos)
-            output_seq.append(idx[:trunc_point])
-        except:
-            output_seq.append(idx)
-
-    translation = [tgt_vocab.to_tokens(list(seq)) for seq in output_seq]
-
+    # translation = [smi_vocab.to_tokens(list(seq)) for seq in output_seq]
+    translation = [' '.join(smi_vocab.to_tokens(output_seq)) for output_seq in output_seqs]
+    # translation: [[tok1,tok2..],[tok11,tok22,...]...]
     return translation
     #return ' '.join(translation[0]), attention_weight_seq
