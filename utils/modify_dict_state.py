@@ -19,7 +19,7 @@ modify the dict_state of embedding layer.
 """
 import torch
 
-checkpoint_path = '../PALACE_models/checkpoint_v7.pt'
+checkpoint_path = 'PALACE_models/PALACE_v1_piece_850.pt'
 checkpoint = torch.load(checkpoint_path, map_location='cpu')
 
 para_list = ['smi_encoder.embedding.weight','decoder.embedding.weight',
@@ -33,4 +33,4 @@ for para in para_list:
     new_para = torch.cat([checkpoint['net'][para],average_repeat])
     checkpoint['net'][para] = new_para
 
-torch.save(checkpoint, f'../PALACE_models/checkpoint_v7.ptt')
+torch.save(checkpoint, f'PALACE_models/checkpoint_v1.pt')

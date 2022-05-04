@@ -3,8 +3,8 @@
 ##SBATCH --partition=general
 ##SBATCH --partition=bigmem4
 ##SBATCH --partition=bigmem2
-##SBATCH --partition=gpu4
-#SBATCH --partition=gpu2
+#SBATCH --partition=gpu4
+##SBATCH --partition=gpu2
 ## sinfo
 
 #SBATCH --nodes=1
@@ -40,7 +40,7 @@ Cm
 module load cuda11.0/toolkit
 world_size=2
 
-for piece in {0..14}
+for piece in {0..50}
 do
 if test ! -f PALACE_models/PALACE_EC_task3_notransfer_piece_${piece}.pt;then
     ~/anaconda3/envs/PALACE/bin/python PALACE_EC_task3_notransfer_train.py $piece $world_size
