@@ -2170,3 +2170,67 @@ def predict_PALACE(net, src, prot_vocab, smi_vocab, num_steps,
     # translation: [[tok1,tok2..],[tok11,tok22,...]...]
     return translation
     #return ' '.join(translation[0]), attention_weight_seq
+
+def predict_PALACE_SMILES(net, src, smi_vocab, num_steps,
+                    device,beam,save_attention_weights=False):
+    """Predict for sequence to sequence.
+    """
+    # Set `net` to eval mode for inference
+    net.eval()
+
+    # X_smi: smi1
+    # source tokens to ids and truncate/pad source length
+    X_smi = src
+    X_smi, X_smi_valid_len = build_array_nmt([X_smi.split(' ')], smi_vocab, num_steps)
+    # X_prot, X_smi became 2d tensor of idx
+    X_smi = X_smi.to(device)
+    X_smi_valid_len = X_smi_valid_len.to(device)
+    # Add the batch axis
+    # X_smi = torch.unsqueeze(torch.tensor(X_smi, dtype=torch.long, device=device), dim=0)
+    printer("predict_PALACE","X_smi",X_smi.shape)
+
+    enc_outputs = net.smi_encoder(X_smi,X_smi_valid_len)
+    # init_dec_state = net.decoder.init_state(enc_outputs, X_smi_valid_len)
+    dec_state = net.decoder.init_state(enc_outputs, X_smi_valid_len)
+    init_dec_state = dec_state
+    # Add the batch axis
+    # dec_X: [[X]]
+    dec_X = torch.unsqueeze(torch.tensor([smi_vocab['<bos>']], dtype=torch.long, device=device), dim=0)
+    init_dec_X = dec_X
+    output_seqs = [[] for _ in range(beam)]
+    for idx in range(beam):
+        Y, dec_state = net.decoder(init_dec_X, init_dec_state)
+        dec_X = torch.topk(Y, beam, dim = 2, sorted = True).indices[...,idx]
+        for _ in range(num_steps - 1):
+            pred = dec_X.squeeze(dim=0).type(torch.int32).item()
+            if pred == smi_vocab['<eos>']:
+                break
+            output_seqs[idx].append(pred)
+            Y, dec_state = net.decoder(dec_X, dec_state)
+            dec_X = Y.argmax(dim=2)
+
+    # translation = [smi_vocab.to_tokens(list(seq)) for seq in output_seq]
+    translation = [' '.join(smi_vocab.to_tokens(output_seq)) for output_seq in output_seqs]
+    # translation: [[tok1,tok2..],[tok11,tok22,...]...]
+    return translation
+    #return ' '.join(translation[0]), attention_weight_seq
+
+def predict_PALACE_prot(net, src, prot_vocab, device):
+    """Predict for sequence to sequence.
+    """
+    # Set `net` to eval mode for inference
+    net.eval()
+
+    # X_prot: seq1
+    # source tokens to ids and truncate/pad source length
+    X_prot = src
+    X_prot, X_prot_valid_len = build_array_nmt([list(X_prot)], prot_vocab, 2500, add_eos = False)
+    # X_prot, X_smi became 2d tensor of idx
+    X_prot = X_prot.to(device)
+    X_prot_valid_len = X_prot_valid_len.to(device)
+    # Add the batch axis
+    # X_smi = torch.unsqueeze(torch.tensor(X_smi, dtype=torch.long, device=device), dim=0)
+    printer("predict_PALACE","X_prot",X_prot.shape)
+
+    Y_hat = net(X_prot, X_prot_valid_len)
+    return int(Y_hat.argmax(dim = 1))
