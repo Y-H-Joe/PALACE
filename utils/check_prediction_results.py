@@ -16,10 +16,12 @@ Contact: yihangjoe@foxmail.com
 ####=======================================================================####
 """
 # v1
+"""
+model = 'v1_again_again'
 accuracy_list_v1 = []
 accuracy_EC_dict_v1 = {'N':'NA',1:'NA',2:'NA',3:'NA',4:'NA',5:'NA',6:'NA',7:'NA',8:'NA'}
-for piece in range(833,866):
-    prediction_dp = rf"../PALACE_predictions/PALACE_v1_piece_{piece}_prediction.txt"
+for piece in range(1,27):
+    prediction_dp = rf"../PALACE_predictions/PALACE_{model}_piece_{piece}_prediction.txt"
     target_dp = r"../data/PALACE_test.sample.tsv"
 
     predictions = []
@@ -55,10 +57,11 @@ for piece in range(833,866):
         except:pass
 
 # v3
+model = 'v3_again_again'
 accuracy_list_v3 = []
 accuracy_EC_dict_v3 = {'N':'NA',1:'NA',2:'NA',3:'NA',4:'NA',5:'NA',6:'NA',7:'NA',8:'NA'}
-for piece in range(1,41):
-    prediction_dp = rf"../PALACE_predictions/PALACE_v3_piece_{piece}_prediction.txt"
+for piece in range(27,54):
+    prediction_dp = rf"../PALACE_predictions/PALACE_{model}_piece_{piece}_prediction.txt"
     target_dp = r"../data/PALACE_test.sample.tsv"
 
     predictions = []
@@ -92,12 +95,13 @@ for piece in range(1,41):
         try:
             accuracy_EC_dict_v3[key] = ECs_count[key]/ECs_total[key]
         except:pass
-
+"""
 # v4
+model = 'v4_again_again'
 accuracy_list_v4 = []
 accuracy_EC_dict_v4 = {'N':'NA',1:'NA',2:'NA',3:'NA',4:'NA',5:'NA',6:'NA',7:'NA',8:'NA'}
-for piece in range(1,49):
-    prediction_dp = rf"../PALACE_predictions/PALACE_v4_piece_{piece}_prediction.txt"
+for piece in range(1,27):
+    prediction_dp = rf"../PALACE_predictions/PALACE_{model}_piece_{piece}_prediction.txt"
     target_dp = r"../data/PALACE_test.sample.tsv"
 
     predictions = []
@@ -133,10 +137,11 @@ for piece in range(1,49):
         except:pass
 
 # v5
+model = 'v5_again_again'
 accuracy_list_v5 = []
 accuracy_EC_dict_v5 = {'N':'NA',1:'NA',2:'NA',3:'NA',4:'NA',5:'NA',6:'NA',7:'NA',8:'NA'}
-for piece in range(1,48):
-    prediction_dp = rf"../PALACE_predictions/PALACE_v5_piece_{piece}_prediction.txt"
+for piece in range(27,54):
+    prediction_dp = rf"../PALACE_predictions/PALACE_{model}_piece_{piece}_prediction.txt"
     target_dp = r"../data/PALACE_test.sample.tsv"
 
     predictions = []
@@ -173,10 +178,11 @@ for piece in range(1,48):
 
 
 # v4_again
+model = 'v4_again'
 accuracy_list_v4_again = []
 accuracy_EC_dict_v4_again = {'N':'NA',1:'NA',2:'NA',3:'NA',4:'NA',5:'NA',6:'NA',7:'NA',8:'NA'}
 for piece in range(1,9):
-    prediction_dp = rf"../PALACE_predictions/PALACE_v4_again_piece_{piece}_prediction.txt"
+    prediction_dp = rf"../PALACE_predictions/PALACE_{model}_piece_{piece}_prediction.txt"
     target_dp = r"../data/PALACE_test.sample.tsv"
 
     predictions = []

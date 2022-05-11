@@ -25,8 +25,8 @@ from faerun import Faerun
 #from rxnfp.transformer_fingerprints import (
 #    RXNBERTFingerprintGenerator, get_default_model_and_tokenizer, generate_fingerprints)
 
-df = pd.read_csv('PALACE_train.again.again.primeEC_fingerprint.tsv',sep = '\t', header = None)
-
+df = pd.read_csv('ab',sep = '\t', header = None)
+output = "PALACE_dataset_enzyme"
 # The number of permutations used by the MinHashing algorithm
 perm = 512
 
@@ -45,18 +45,25 @@ lf.batch_add(enc.batch_from_weight_array(fingerprints))
 lf.index()
 
 # Get the coordinates
-x, y, s, t, _ = tmap.layout_from_lsh_forest(lf)
+cfg = tmap.LayoutConfiguration()
+cfg.node_size = 1 / 26
+cfg.mmm_repeats = 2
+cfg.sl_extra_scaling_steps = 5
+cfg.k = 20
+cfg.sl_scaling_type = tmap.RelativeToAvgLength
+x, y, s, t, _ = tmap.layout_from_lsh_forest(lf,cfg)
 
 # Now plot the data
 color_list = [int(x) if x!= "N" else 0 for x in df[0]]
 faerun = Faerun(view="front", coords=False, clear_color = '#FFFFFF')
 faerun.add_scatter(
-    "PALACE_dataset",
+    output,
     {   "x": x,
         "y": y,
         "c": color_list # color
         }, # if add labels here, can see hover avatar
-    point_scale=10,
+    point_scale=1,
+    max_point_size=10,
     colormap = ['Set1'],
     has_legend=True,
     legend_title = ['EC types'],
@@ -64,8 +71,8 @@ faerun.add_scatter(
     shader = 'smoothCircle'
 )
 
-faerun.add_tree("PALACE_dataset_tree", {"from": s, "to": t}, point_helper="PALACE_dataset",color="#E6E4E4")
+faerun.add_tree(f"{output}_tree", {"from": s, "to": t}, point_helper="PALACE_dataset",color="#E6E4E4")
 
 # Choose the "smiles" template to display structure on hover
-faerun.plot('PALACE_dataset', notebook_height=750)
+faerun.plot(output)
 
