@@ -214,3 +214,6 @@ data/PALACE_test.sample.tsv
 PALACE_train.shuf.batch1.tsv_0001
 PALACE_train.shuf.batch2.tsv_0052
 utils/PALACE_dataset.html
+utils/EC_tok.train.again.primeEC_fingerprint.tsv
+utils/extract_rxn_and_generate_fingerprint_from_train_set.py
+utils/EC_tok.train.again.primeEC_rxn.tsv

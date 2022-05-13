@@ -20,13 +20,14 @@ import pandas as pd
 import numpy as np
 import tmap
 from faerun import Faerun
+from matplotlib.colors import ListedColormap
 #from mhfp.encoder import MHFPEncoder
 #from rdkit.Chem import AllChem
 #from rxnfp.transformer_fingerprints import (
 #    RXNBERTFingerprintGenerator, get_default_model_and_tokenizer, generate_fingerprints)
 
-df = pd.read_csv('ab',sep = '\t', header = None)
-output = "PALACE_dataset_enzyme"
+df = pd.read_csv('EC_tok.train.again.primeEC_fingerprint.tsv',sep = '\t', header = None)
+output = "EC_tok_train_again" # no '.' should be in name
 # The number of permutations used by the MinHashing algorithm
 perm = 512
 
@@ -54,6 +55,10 @@ cfg.sl_scaling_type = tmap.RelativeToAvgLength
 x, y, s, t, _ = tmap.layout_from_lsh_forest(lf,cfg)
 
 # Now plot the data
+EC_cmap = ListedColormap(
+        ["#000000", "#52F9FF", "#E8C61A", "#FF52F9", "#24BD24", "#BD2424","#2424BD"],
+        name="EC",
+    )
 color_list = [int(x) if x!= "N" else 0 for x in df[0]]
 faerun = Faerun(view="front", coords=False, clear_color = '#FFFFFF')
 faerun.add_scatter(
@@ -62,16 +67,16 @@ faerun.add_scatter(
         "y": y,
         "c": color_list # color
         }, # if add labels here, can see hover avatar
-    point_scale=1,
+    point_scale=3,
     max_point_size=10,
-    colormap = ['Set1'],
+    colormap = [EC_cmap],
     has_legend=True,
     legend_title = ['EC types'],
     categorical=[True],
     shader = 'smoothCircle'
 )
 
-faerun.add_tree(f"{output}_tree", {"from": s, "to": t}, point_helper="PALACE_dataset",color="#E6E4E4")
+faerun.add_tree(f"{output}_tree", {"from": s, "to": t}, point_helper=output,color="#E6E4E4")
 
 # Choose the "smiles" template to display structure on hover
 faerun.plot(output)
