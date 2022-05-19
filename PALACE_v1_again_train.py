@@ -60,7 +60,7 @@ def main(rank, world_size,piece,model_id):
             # time steps/window size,ref d2l 8.1 and 8.3
             self.num_steps = 300
             # learning rate
-            self.lr = 0.00000009
+            self.lr = 0.000001
             # number of epochs
             self.num_epochs = 10 # 30 for 4 gpus
             # feed forward intermidiate number of hiddens

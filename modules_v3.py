@@ -501,29 +501,6 @@ class PALACE_prot(nn.Module):
 
          return self.softmax(self.dense3(X2))
 
-class PALACE_prot_v2(nn.Module):
-    """编码器-解码器架构的基类
-    """
-    def __init__(self, prot_encoder, feat_space_dim, class_num, dropout, num_enc_blks, num_dec_blks, **kwargs):
-        super(PALACE_prot, self).__init__(**kwargs)
-        self.prot_encoder = prot_encoder
-        self.dense1 = nn.Linear(feat_space_dim,feat_space_dim)
-        self.addnorm = AddNorm_v2(feat_space_dim, dropout, 'enc', num_enc_blks, num_dec_blks)
-        self.dense2 = nn.Linear(feat_space_dim,feat_space_dim)
-        self.dense3 = nn.Linear(feat_space_dim,512)
-        self.dense4 = nn.Linear(512,class_num)
-        self.softmax = nn.Softmax()
-
-    def forward(self, X_prot,valid_lens, *args):
-         # prot_feat size: batch_size * num_steps * feat_space_dim
-         prot_feat = self.prot_encoder(X_prot, valid_lens, *args)
-         # prot_feat_mean size: batch_size * feat_space_dim
-         prot_feat_mean = prot_feat.mean(dim = 1)
-         X1 = self.dense2(self.dense1(prot_feat_mean))
-         X2 = self.addnorm(prot_feat_mean, X1)
-
-         return self.softmax(self.dense4(self.dense3(X2)))
-
 # ==============================Model building=================================
 #%% Model building
 

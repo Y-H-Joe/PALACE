@@ -3,18 +3,18 @@
 ##SBATCH --partition=general
 ##SBATCH --partition=bigmem4
 ##SBATCH --partition=bigmem2
-##SBATCH --partition=gpu4
-#SBATCH --partition=gpu2
+#SBATCH --partition=gpu4
+##SBATCH --partition=gpu2
 ## sinfo
 
 #SBATCH --nodes=1
-#SBATCH --ntasks=2
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=15-00:00:00
 ##SBATCH --mem=5G
 ##SBATCH --exclusive
-#SBATCH --ntasks-per-node=2
-#SBATCH --gres=gpu:tesla:2
+#SBATCH --ntasks-per-node=1
+#SBATCH --gres=gpu:tesla:1
 ##SBATCH --job-name "yihang's job"
 
 #SBATCH --chdir /scratch/yzz0191/metabolism_20220127/
@@ -38,15 +38,15 @@ FqNAME=`sed -n "${taskID}p" $NAMEFILE`
 Cm
 
 module load cuda11.0/toolkit
-world_size=2
-model=v3_again_again
 
-for piece in {1..26} # v3_again_again, v4_again_again
-# for piece in {27..53} # v1_again_again, v5_again_again
-do
-     if test ! -f PALACE_models/PALACE_${model}_piece_${piece}.pt;then
-        ~/anaconda3/envs/PALACE/bin/python PALACE_${model}_train.py $piece $world_size  
-      fi
-done
+version=v4_v5_ave_again_again
+smi_vocab_dp=vocab/smi_vocab_v2.pkl
+prot_vocab_dp=vocab/prot_vocab.pkl
 
-# ~/anaconda3/envs/PALACE/bin/python PALACE_v2_train.py 0 $world_size  
+# v4_v5_ave_again_again base
+
+if test ! -f PALACE_predictions/PALACE_${version}_piece_${piece}_prediction.txt;then
+    ~/anaconda3/envs/PALACE/bin/python PALACE_predict_base.py PALACE_models/checkpoint_${version}.pt PALACE_test.sample.tsv  $smi_vocab_dp $prot_vocab_dp PALACE_predictions/PALACE_${version}_prediction.txt
+fi
+
+

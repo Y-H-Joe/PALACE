@@ -39,14 +39,15 @@ Cm
 
 module load cuda11.0/toolkit
 
-version=EC_task3
+version=EC_task3_notransfer
 smi_vocab_dp=vocab/smi_vocab_v2.pkl
 prot_vocab_dp=vocab/prot_vocab.pkl
 class_num=5152
 
 #for piece in {1..14} # EC_task1 class_num=2
 #for piece in {0..3} # EC_task2 class_num=8
-for piece in {0..48} # EC_task3 class_num=5152
+#for piece in {0..48} # EC_task3 class_num=5152
+for piece in {0..50} # EC_task3_notransfer class_num=5152
 do
      if test ! -f PALACE_predictions_EC/PALACE_${version}_piece_${piece}_prediction.txt;then
         ~/anaconda3/envs/PALACE/bin/python PALACE_predict_prot.py PALACE_models/PALACE_${version}_piece_${piece}.pt data/PALACE_EC_task1.test.tsv $smi_vocab_dp $prot_vocab_dp PALACE_predictions_EC/PALACE_${version}_piece_${piece}_prediction.txt ${class_num}
