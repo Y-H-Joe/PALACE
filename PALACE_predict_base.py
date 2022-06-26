@@ -126,9 +126,19 @@ def main(model_dp, data_dp, smi_vocab_dp, prot_vocab_dp, output_dp, beam = 5):
     printer("=======================PALACE: predicting...=======================",print_=True)
     tp5 = time.time()
     with open(output_dp,'w') as o:
-        for src in samples:
-            prediction = predict_PALACE(net, src, prot_vocab, smi_vocab, args.num_steps,device,beam,save_attention_weights=False)
-            o.write(str(prediction) + '\n')
+        for i,src in enumerate(samples):
+            try:
+                prediction = predict_PALACE(net, src, prot_vocab, smi_vocab, args.num_steps,device,beam,save_attention_weights=False)
+                r = torch.cuda.memory_reserved(0)
+                a = torch.cuda.memory_allocated(0)
+                if i % 20 == 0:
+                    print(fr"Predicting {i}th sample. CUDA reserved {r / (1024 ** 3)}GB; allocated {a / (1024 ** 3)}GB; free {(r-a) / (1024 ** 3)}GB.")
+                    print(fr"torch.cuda.mem_get_info:{torch.cuda.mem_get_info(0)}")
+                o.write(str(prediction) + '\n')
+                del(prediction)
+                torch.cuda.empty_cache()
+            except:
+                sys.exit(f"Failed at {i}th sample.")
     tp6 = time.time()
     printer("=======================predicting: {}s...=======================".format(tp6 - tp5),print_=True)
 

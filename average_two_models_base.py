@@ -55,11 +55,11 @@ class Args:
         # multi-head attention will divide feat_space_num by num_heads
 args = Args()
 
-dp1 = r"D:\CurrentProjects\AI+yao\metabolism\microbiomeMetabolism\PALACE_models\checkpoint_v4_again_again.pt"
-dp2 = r"D:\CurrentProjects\AI+yao\metabolism\microbiomeMetabolism\PALACE_models\checkpoint_v5_again_again.pt"
+dp1 = r"C:\CurrentProjects\AI+yao\metabolism\microbiomeMetabolism\PALACE_models\checkpoint_v4_again_again.pt"
+dp2 = r"C:\CurrentProjects\AI+yao\metabolism\microbiomeMetabolism\PALACE_models\checkpoint_v5_again_again.pt"
 smi_vocab_dp = r"vocab/smi_vocab_v2.pkl"
 prot_vocab_dp = r"vocab/prot_vocab.pkl"
-output = r"D:\CurrentProjects\AI+yao\metabolism\microbiomeMetabolism\PALACE_models\checkpoint_v4_v5_ave_again_again.pt"
+output = r"C:\CurrentProjects\AI+yao\metabolism\microbiomeMetabolism\PALACE_models\checkpoint_v4_v5_ave_again_again.pt"
 
 smi_vocab = retrieve_vocab(smi_vocab_dp)
 prot_vocab = retrieve_vocab(prot_vocab_dp)
@@ -96,9 +96,17 @@ dicts3 = net.state_dict()
 # Average all parameters
 for key in dicts3:
     dicts3[key] = (dicts1[key] + dicts2[key]) / 2.
+a3 = dicts3['cross_encoder.encoder.layers.0.self_attn.in_proj_bias']
 
-checkpoint = {'net': net.state_dict()}
+checkpoint = {'net': dicts3}
 save_on_master(checkpoint,output)
 
+"""
+# try to solve CUDA OOM with averaged model
+dp3 = r"C:\CurrentProjects\AI+yao\metabolism\microbiomeMetabolism\PALACE_models\checkpoint_v4_v5_ave_again_again2.pt"
+checkpoint3 = torch.load(dp3, map_location='cpu')
+dicts33 = checkpoint3['net']
+a33 = dicts33['cross_encoder.encoder.layers.0.self_attn.in_proj_bias']
 
+"""
 
