@@ -425,14 +425,15 @@ class PALACE_v2(nn.Module):
         self.smi_encoder = smi_encoder
         self.prot_encoder = prot_encoder
         self.cross_encoder = cross_encoder
-        self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
+        self.ffn1 = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
         self.addnorm = AddNorm_v2(feat_space_dim, dropout, 'enc', num_enc_blks, num_dec_blks)
+        self.ffn2 = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
         self.decoder = decoder
 
         # deepnorm init
         beta = 0.87 * (num_enc_blks ** 4 * num_dec_blks) ** (-0.0625)
-        nn.init.xavier_normal_(self.ffn.dense1.weight, gain = beta)
-        nn.init.xavier_normal_(self.ffn.dense2.weight, gain = beta)
+        nn.init.xavier_normal_(self.ffn1.dense1.weight, gain = beta)
+        nn.init.xavier_normal_(self.ffn1.dense2.weight, gain = beta)
 
     def forward(self, X, dec_X, valid_lens, *args):
         # Y_hat, _ = net((X_prot, X), dec_input, (prot_valid_len,X_valid_len))
@@ -447,7 +448,7 @@ class PALACE_v2(nn.Module):
         # X_mix = X_prot * X_smi
         X_mix = X_prot + X_smi
         # X_mix = self.addnorm(self.ffn(X_mix),(X_mix+X_prot+X_smi))
-        X_mix = self.addnorm(self.ffn(X_mix),(X_mix+X_prot+X_smi) / torch.tensor(3))
+        X_mix = self.ffn2(self.addnorm(self.ffn1(X_mix),(X_mix+X_prot+X_smi) / torch.tensor(3)))
         enc_outputs = self.cross_encoder(X_mix, enc_valid_lens, *args)
         printer('PALACE','enc_outputs',enc_outputs.shape)
 
@@ -1364,7 +1365,7 @@ def retrieve_vocab(vocab_dir):
     with open(vocab_dir,'rb') as r:
         return pickle.load(r)
 
-def creat_vocab(file_path = './vocab/smi_vocab_v2.txt'):
+def creat_vocab(file_path = './vocab/smi_vocab_v2.txt',save = False):
     """
     file_path = './prot_models/embedding/vocab.txt'
     """
@@ -1383,7 +1384,7 @@ def creat_vocab(file_path = './vocab/smi_vocab_v2.txt'):
     with open(file_path,'r') as r:
         source = [[x.strip()] for x in r.readlines()]
     vocab = Vocab(source, min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
-    save_vocab(vocab,r'./vocab/smi_vocab_v2.pkl')
+    if save: save_vocab(vocab,save)
     return vocab
 
 def prot_to_features_bert(prot : list, trained_model_dir: str, device: str, prot_read_batch_size: int):
@@ -1607,9 +1608,14 @@ def load_data(rank, world_size,data_dir,batch_size, num_steps, device, vocab_dir
 
     if vocab_dir:
         assert os.path.exists(vocab_dir[0]) and os.path.exists(vocab_dir[1]) and os.path.exists(vocab_dir[2]),"cannot find available vocab"
+        """
         src_vocab = retrieve_vocab(vocab_dir[0])
         tgt_vocab = retrieve_vocab(vocab_dir[1])
         prot_vocab = retrieve_vocab(vocab_dir[2])
+        """,save = True
+        src_vocab = creat_vocab(file_path = vocab_dir[0],save = './vocab/smi_vocab_v10.pkl')
+        tgt_vocab = creat_vocab(file_path = vocab_dir[1])
+        prot_vocab = creat_vocab(file_path = vocab_dir[2],save = './vocab/prot_vocab_v10.pkl')
     else:
         src_vocab = Vocab(source, min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])
         tgt_vocab = Vocab(target, min_freq=0,reserved_tokens=['<pad>', '<bos>', '<eos>'])

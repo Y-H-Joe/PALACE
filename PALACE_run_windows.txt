@@ -1,5 +1,5 @@
-for ($num = 11 ; $num -le 12 ; $num++){
-python PALACE_14_train.py $num
+for ($num = 0 ; $num -le 12 ; $num++){
+python PALACE_v10_train.py $num
 Start-Sleep -s 600
 }
 python PALACE_predict_base.py  ..\PALACE_models\checkpoint_v4_v5_ave_again_again.pt .\data\PALACE_test.sample.tsv .\vocab\smi_vocab_v2.pkl .\vocab\prot_vocab.pkl  v4_v5_prediction.txt
