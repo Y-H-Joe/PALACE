@@ -19,6 +19,9 @@ Contact: yihangjoe@foxmail.com
 =================================== example ===================================
 
 =================================== warning ===================================
+seperate big dataset into pieces
+for i in range(128):
+    shutil.copy('PALACE_train.enzyme_and_nonenzyme.shuffle.v4.tsv_{0:04}'.format(i),'PALACE_train.enzyme_and_nonenzyme.shuffle.v4.tsv_{0:04}'.format(i+256))
 
 ####=======================================================================####
 """

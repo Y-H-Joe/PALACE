@@ -24,6 +24,7 @@ Contact: yihangjoe@foxmail.com
 """
 import time
 import sys
+import os
 
 import torch
 import torch.multiprocessing as mp
@@ -43,30 +44,30 @@ def main(rank, world_size,piece,model_id):
             # True or False
             self.print_shape = False
             # each smi_tok or prot_feat will be projected to feat_space_dim
-            self.feat_space_dim = 256 #256
+            self.feat_space_dim = 260 #256
             # notation protein length (any length of protein will be projected to fix length)
             # self.prot_nota_len = 2 # 1024
             # number of encoder/decoder blocks
-            self.prot_blks = 6 # 5
-            self.smi_blks = 6 # 5
+            self.prot_blks = 9 # 5
+            self.smi_blks = 9 # 5
             self.cross_blks = 9 # 9
-            self.dec_blks = 10 # 14
+            self.dec_blks = 11 # 14
             # dropout ratio for AddNorm,PositionalEncoding,DotProductMixAttention,ProteinEncoding
             self.dropout = 0.01
             # number of samples using per train
-            self.batch_size = 48 # 20 when 2 gpus, 16 when 4 gpus
+            self.batch_size = 30 # 20 when 2 gpus, 16 when 4 gpus
             # number of protein reading when trans protein to features using pretrained BERT
             #self.prot_read_batch_size = 6
             # time steps/window size,ref d2l 8.1 and 8.3
             self.num_steps = 300
             # learning rate
-            self.lr = 0.00000009
+            self.lr = 0.00001
             # number of epochs
-            self.num_epochs = 10 # 30 for 4 gpus
+            self.num_epochs = 5 # 30 for 4 gpus
             # feed forward intermidiate number of hiddens
             self.ffn_num_hiddens = 128 # 64
             # number of heads
-            self.num_heads = 8 # 8
+            self.num_heads = 10 # 8
             # protein encoding features feed forward
             # self.prot_MLP = [5] #128
             # multi-head attention will divide feat_space_num by num_heads
@@ -89,6 +90,9 @@ def main(rank, world_size,piece,model_id):
     data_dir = './data/PALACE_train.enzyme_and_nonenzyme.shuffle.v4.tsv_{0:04}'.format(piece)
     # data_dir = './data/fra.txt'
     #data_dir = './data/fake_sample_for_vocab.txt'
+    os.makedirs('./PALACE_models', exist_ok=True)
+    os.makedirs('./vocab', exist_ok=True)
+
 
     if int(piece) == 0:
         first_train = True

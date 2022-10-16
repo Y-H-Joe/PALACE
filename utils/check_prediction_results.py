@@ -15,8 +15,59 @@ Contact: yihangjoe@foxmail.com
 #================================== warning ===================================
 ####=======================================================================####
 """
-# v1
+# v10
+model = 161
+# piece = range(5)
+piece = [500]
+accuracy_list = []
+accuracy_EC_dict = {'N':'NA',1:'NA',2:'NA',3:'NA',4:'NA',5:'NA',6:'NA',7:'NA',8:'NA'}
+
+for p in piece:
+    prediction_dp = rf"../PALACE_v11_model_{model}_piece_{p}.txt"
+    target_dp = r"../PALACE_test.enzyme_and_nonenzyme.shuffle.v40.tsv_{0:04}".format(p)
+
+    predictions = []
+    targets = []
+    ECs = []
+    ECs_total = {'N':0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0}
+    ECs_count = {'N':0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0}
+    with open(prediction_dp,'r') as r1, open(target_dp,'r') as r2:
+        lines1 = r1.readlines()
+        lines2 = r2.readlines()
+        prediction_num = len(lines1)
+        for line1,line2 in zip(lines1,lines2[:prediction_num]):
+            predictions.append(eval(line1.strip()))
+            targets.append(line2.strip().split('\t')[-1])
+            try:
+                ECs.append(int(line2.strip().split('\t')[1].split('.')[0]))
+            except:
+                ECs.append(line2.strip().split('\t')[1].split('.')[0])
+
+    # remove 'EC' in ECs
+    targets_new, predictions_new, ECs_new = [],[],[]
+    for i,v in enumerate(ECs):
+        if v != 'EC':
+            targets_new.append(targets[i])
+            predictions_new.append(predictions[i])
+            ECs_new.append(ECs[i])
+    count = 0
+    for target, prediction,EC in zip(targets_new, predictions_new, ECs_new):
+        ECs_total[EC] += 1
+        #if target in prediction:
+        if target == prediction[0]:
+            count += 1
+            ECs_count[EC] += 1
+
+    accuracy = count / len(targets)
+    accuracy_list.append(accuracy)
+    for key in ECs_count.keys():
+        try:
+            accuracy_EC_dict[key] = ECs_count[key]/ECs_total[key]
+        except:pass
+
+
 """
+# v1
 model = 'v1_again_again'
 accuracy_list_v1 = []
 accuracy_EC_dict_v1 = {'N':'NA',1:'NA',2:'NA',3:'NA',4:'NA',5:'NA',6:'NA',7:'NA',8:'NA'}
@@ -55,7 +106,7 @@ for piece in range(1,27):
         try:
             accuracy_EC_dict_v1[key] = ECs_count[key]/ECs_total[key]
         except:pass
-"""
+
 # v3_again_again
 model = 'v3_again_again'
 accuracy_list_v3 = []
@@ -215,6 +266,9 @@ for piece in range(27,54):
         try:
             accuracy_EC_dict_v5[key] = ECs_count[key]/ECs_total[key]
         except:pass
+"""
+
+
 
 
 

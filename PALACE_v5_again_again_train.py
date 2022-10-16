@@ -47,20 +47,20 @@ def main(rank, world_size,piece,model_id):
             # notation protein length (any length of protein will be projected to fix length)
             # self.prot_nota_len = 2 # 1024
             # number of encoder/decoder blocks
-            self.prot_blks = 4 # 5
-            self.smi_blks = 4 # 5
-            self.cross_blks = 4 # 9
-            self.dec_blks = 8 # 14
+            self.prot_blks = 2 #4 # 5
+            self.smi_blks = 2 #4 # 5
+            self.cross_blks = 2 #4 # 9
+            self.dec_blks = 2 #8 # 14
             # dropout ratio for AddNorm,PositionalEncoding,DotProductMixAttention,ProteinEncoding
             self.dropout = 0.01
             # number of samples using per train
-            self.batch_size = 14 # 20 when 2 gpus, 16 when 4 gpus
+            self.batch_size = 25 # 20 when 2 gpus, 16 when 4 gpus
             # number of protein reading when trans protein to features using pretrained BERT
             #self.prot_read_batch_size = 6
             # time steps/window size,ref d2l 8.1 and 8.3
             self.num_steps = 300
             # learning rate
-            self.lr = 0.00000009
+            self.lr = 0.0001
             # number of epochs
             self.num_epochs = 10 # 30 for 4 gpus
             # feed forward intermidiate number of hiddens
@@ -81,13 +81,13 @@ def main(rank, world_size,piece,model_id):
     except:
         setup_gpu(rank, world_size,12356)
     device = assign_gpu(rank)
-    diagnose = False
+    diagnose = True
 
 # ===============================Training======================================
 #%% Training
     loss_log = rf'PALACE_{model_id}.loss_accu.log'
-    data_dir = './data/PALACE_train.again.withnonenzyme.shuf.tsv_{0:04}'.format(piece)
-    # data_dir = './data/fra.txt'
+    # data_dir = './data/PALACE_train.again.withnonenzyme.shuf.tsv_{0:04}'.format(piece)
+    data_dir = './aaa.txt'
     #data_dir = './data/fake_sample_for_vocab.txt'
 
     if int(piece) == 0:
@@ -170,9 +170,11 @@ def main(rank, world_size,piece,model_id):
         net_without_ddp.load_state_dict(checkpoint['net'])
         # scheduler.load_state_dict(checkpoint['scheduler'])
         loss.load_state_dict(checkpoint['loss'])
+
     tp5 = time.time()
     train_PALACE(piece, net, data_iter, optimizer,scheduler,loss, args.num_epochs, tgt_vocab, device, loss_log, model_id, diagnose)
     tp6 = time.time()
+
     printer("=======================training: {}s...=======================".format(tp6 - tp5),print_=True)
 
     printer("=======================PALACE: saving model...=======================",print_=True)
@@ -195,20 +197,22 @@ def main(rank, world_size,piece,model_id):
         model_diagnose(model_id)
 
 if __name__ == '__main__':
-    piece = int(sys.argv[1])
-    # piece = 0
+    # piece = int(sys.argv[1])
+    piece = 0
     # suppose we have `world_size` gpus
-    world_size = int(sys.argv[2])
-    # world_size = 1
-    model_id = 'v5_again_again'
-
+    # world_size = int(sys.argv[2])
+    world_size = 1
+    # model_id = 'v5_again_again'
+    model_id = 'v55'
+    """
     mp.spawn(
         main,
         args=(world_size,piece,model_id),
         nprocs=world_size
     )
+    """
 
-    # main(0,world_size,piece,model_id)
+    main(0,world_size,piece,model_id)
 
 
 

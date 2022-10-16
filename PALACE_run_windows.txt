@@ -1,5 +1,95 @@
-for ($num = 0 ; $num -le 12 ; $num++){
-python PALACE_v10_train.py $num
+cd E:\vmUbuntu_share\PALACE\data
+conda activate spyder3
+cd D:\Projects\AI+yao\metabolism\microbiomeMetabolism\PALACE
+python PALACE_v15_train.py 
+
+for ($num = 0 ; $num -le 319 ; $num++){
+python PALACE_v11_train.py $num
 Start-Sleep -s 600
 }
+
+
+for ($num = 0 ; $num -le 100 ; $num++){
+python PALACE_v12_train.py $num
+Start-Sleep -s 3
+}
+
+for ($num = 0 ; $num -le 15 ; $num++){
+python PALACE_predict_v10.py  $num
+Start-Sleep -s 100
+}
+
+for ($num = 0 ; $num -le 20 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 100
+}
+
+for ($num = 21 ; $num -le 40 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 100
+}
+
+for ($num = 41 ; $num -le 60 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+
+for ($num = 61 ; $num -le 80 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+
+for ($num = 81 ; $num -le 200 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+
+
+for ($num = 201 ; $num -le 210 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+for ($num = 211; $num -le 220 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+for ($num = 221 ; $num -le 230 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+for ($num = 231; $num -le 240 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+for ($num = 241 ; $num -le 250 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+for ($num = 251 ; $num -le 260 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+for ($num = 261 ; $num -le 270 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+
+for ($num = 271 ; $num -le 280 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+
+for ($num = 281 ; $num -le 290 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+
+
+for ($num = 291 ; $num -le 305 ; $num++){
+python PALACE_predict_v11.py  $num
+Start-Sleep -s 600
+}
+
+ Start-Job -ScriptBlock { & python PALACE_predict_v11.py  305 } 
+ 
 python PALACE_predict_base.py  ..\PALACE_models\checkpoint_v4_v5_ave_again_again.pt .\data\PALACE_test.sample.tsv .\vocab\smi_vocab_v2.pkl .\vocab\prot_vocab.pkl  v4_v5_prediction.txt

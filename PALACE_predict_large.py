@@ -125,10 +125,11 @@ def main(model_dp, data_dp, smi_vocab_dp, prot_vocab_dp, output_dp, beam = 5):
 
     printer("=======================PALACE: predicting...=======================",print_=True)
     tp5 = time.time()
-    with open(output_dp,'w') as o:
-        for src in samples:
-            prediction = predict_PALACE(net, src, prot_vocab, smi_vocab, args.num_steps,device,beam,save_attention_weights=False)
-            o.write(str(prediction) + '\n')
+    with torch.no_grad():
+        with open(output_dp,'w') as o:
+            for src in samples:
+                prediction = predict_PALACE(net, src, prot_vocab, smi_vocab, args.num_steps,device,beam,save_attention_weights=False)
+                o.write(str(prediction) + '\n')
     tp6 = time.time()
     printer("=======================predicting: {}s...=======================".format(tp6 - tp5),print_=True)
 
@@ -141,18 +142,18 @@ def main(model_dp, data_dp, smi_vocab_dp, prot_vocab_dp, output_dp, beam = 5):
     return
 
 if __name__ == '__main__':
+    """
     model_dp = sys.argv[1]
     data_dp = sys.argv[2]
     smi_vocab_dp = sys.argv[3]
     prot_vocab_dp = sys.argv[4]
     output_dp = sys.argv[5]
     """
-    model_dp = r'PALACE_models/PALACE_v3_piece_97.pt'
-    data_dp = r'data/PALACE_train.shuf.batch1.sample.tsv'
+    model_dp = r'PALACE_models/PALACE_v11_piece_161.pt'
+    data_dp = r'data/PALACE_test.enzyme_and_nonenzyme.shuffle.v40.tsv_0500'
     smi_vocab_dp = r'vocab/smi_vocab_v2.pkl'
     prot_vocab_dp = r'vocab/prot_vocab.pkl'
     output_dp = 'aa'
-    """
     main(model_dp, data_dp, smi_vocab_dp, prot_vocab_dp, output_dp)
 
 
