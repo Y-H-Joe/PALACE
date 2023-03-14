@@ -6,9 +6,9 @@ Created on Wed Feb 23 18:08:11 2022
 @author: Yihang Zhou
 
 Contact: yihangjoe@foxmail.com
-         https://github.com/Y-H-Joe/
+         https://github.com/Y-H-Joe/z
 
-####============================ description ==============================####
+================================ description ==================================
 
 =================================== input =====================================
 
@@ -20,7 +20,7 @@ Contact: yihangjoe@foxmail.com
 
 =================================== warning ===================================
 
-####=======================================================================####
+===============================================================================
 """
 
 import math
@@ -47,7 +47,6 @@ from torch.nn.parameter import Parameter
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 from torch.autograd import Variable
-
 
 from transformers import BertForMaskedLM, BertTokenizer
 from transformers import logging as tr_log
@@ -176,7 +175,7 @@ class MultiheadAttention(nn.Module):
             return attn_output, attn_output_weights
 
 class DynamicGNoise(nn.Module):
-    def __init__(self, num_steps,feat_space_dim, std=0.01):
+    def __init__(self, num_steps,feat_space_dim, std=0):
         super().__init__()
         self.num_steps, self.feat_space_dim = num_steps,feat_space_dim
         self.noise = Variable(torch.zeros((self.num_steps,self.feat_space_dim)).cuda())
@@ -1078,7 +1077,7 @@ class PALACE_v9(nn.Module):
         self.smi_encoder = smi_encoder
         self.prot_encoder = prot_encoder
         self.cross_encoder = cross_encoder
-        self.noise = DynamicGNoise(num_steps,feat_space_dim)
+        # self.noise = DynamicGNoise(num_steps,feat_space_dim)
         self.attention = MultiHeadAttention(feat_space_dim, num_heads, dropout)
         self.decoder = decoder
 
@@ -1097,7 +1096,7 @@ class PALACE_v9(nn.Module):
 
         enc_outputs = self.cross_encoder(X_attentioned, enc_valid_lens, *args)
 
-        enc_outputs = self.noise(enc_outputs) + enc_outputs + X_attentioned
+        enc_outputs = enc_outputs + X_attentioned
         printer('PALACE','enc_outputs',enc_outputs.shape)
 
         # dec_state: [enc_outputs, enc_valid_lens, [None] * self.num_blks]
@@ -1265,7 +1264,109 @@ class PALACE_v12(nn.Module):
 
         return self.decoder(dec_X, dec_state)
 
+class PALACE_v13(nn.Module):
+    """编码器-解码器架构的基类
+    """
+    def __init__(self, smi_encoder, prot_encoder, cross_encoder, decoder,
+                 feat_space_dim,ffn_num_hiddens,std, num_steps, dropout, num_enc_blks, num_dec_blks, **kwargs):
+        super(PALACE_v13, self).__init__(**kwargs)
+        self.smi_encoder = smi_encoder
+        self.prot_encoder = prot_encoder
+        self.cross_encoder = cross_encoder
+        #self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
+        # self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU(0.1)
+        self.noise = DynamicGNoise(num_steps,feat_space_dim, std)
+        #self.addnorm = AddNorm_v2(feat_space_dim, dropout, 'enc', num_enc_blks, num_dec_blks)
+        self.decoder = decoder
 
+        # deepnorm init
+        # beta = 0.87 * (num_enc_blks ** 4 * num_dec_blks) ** (-0.0625)
+        #nn.init.xavier_normal_(self.ffn.dense1.weight, gain = beta)
+        # nn.init.xavier_normal_(self.ffn.dense2.weight, gain = beta)
+
+    def forward(self, X, dec_X, valid_lens, *args):
+        # Y_hat, _ = net((X_prot, X), dec_input, (prot_valid_len,X_valid_len))
+        # X_prot: tensor([batch_size,2500])
+        # X_smi: tensor([batch_size,num_steps])
+        X_prot, X_smi = X[0],X[1]
+        prot_valid_lens,enc_valid_lens = valid_lens[0],valid_lens[1]
+        # encoder outputs: tensor([batch_size,num_steps,feat_space_dim])
+        X_prot = self.prot_encoder(X_prot, prot_valid_lens, *args)
+        X_smi = self.smi_encoder(X_smi, enc_valid_lens, *args)
+        #enc_outputs = self.cross_encoder(torch.cat((X_prot,X_smi),0), enc_valid_lens, *args)
+        # X_mix = X_prot * X_smi
+        X_mix = self.relu( (self.noise(X_smi) + (X_prot + X_smi)) / torch.tensor(2))
+        # X_mix += self.noise(X_mix)
+        # X_mix = self.addnorm(self.ffn(X_mix),(X_mix+X_prot+X_smi))
+        # X_mix = self.addnorm(self.ffn(X_mix),(X_mix+X_prot+X_smi) / torch.tensor(3))
+        # X_mix = self.ffn(self.addnorm(X_mix,(X_prot+X_smi) / torch.tensor(3)))
+
+        enc_outputs = self.cross_encoder(X_mix, enc_valid_lens, *args)
+        # enc_outputs += self.noise(enc_outputs)
+        printer('PALACE','enc_outputs',enc_outputs.shape)
+
+        # dec_state: [enc_outputs, enc_valid_lens, [None] * self.num_blks]
+        # enc_valid_lens = src_valid_len: ([N]): tensor([valid_len_for_each_sample])
+        dec_state = self.decoder.init_state(enc_outputs,enc_valid_lens, *args)
+        #printer("PALACE","dec_state",dec_state)
+
+        return self.decoder(dec_X, dec_state)
+
+class PALACE_v14(nn.Module):
+    """编码器-解码器架构的基类
+    """
+    def __init__(self, smi_encoder, prot_encoder, cross_encoder, decoder,
+                 feat_space_dim,ffn_num_hiddens,std, num_steps, dropout, num_enc_blks, num_dec_blks, **kwargs):
+        super(PALACE_v14, self).__init__(**kwargs)
+        self.smi_encoder = smi_encoder
+        self.prot_encoder = prot_encoder
+        self.cross_encoder = cross_encoder
+        #self.ffn = PositionWiseFFN(feat_space_dim, ffn_num_hiddens)
+        # self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU(0.1)
+        # self.noise = DynamicGNoise(num_steps,feat_space_dim, std)
+        #self.addnorm = AddNorm_v2(feat_space_dim, dropout, 'enc', num_enc_blks, num_dec_blks)
+        self.decoder = decoder
+        self.num_steps = num_steps
+        self.feat_space_dim = feat_space_dim
+        self.std = std
+
+        # deepnorm init
+        # beta = 0.87 * (num_enc_blks ** 4 * num_dec_blks) ** (-0.0625)
+        #nn.init.xavier_normal_(self.ffn.dense1.weight, gain = beta)
+        # nn.init.xavier_normal_(self.ffn.dense2.weight, gain = beta)
+
+    def forward(self, X, dec_X, valid_lens, *args):
+        # Y_hat, _ = net((X_prot, X), dec_input, (prot_valid_len,X_valid_len))
+        # X_prot: tensor([batch_size,2500])
+        # X_smi: tensor([batch_size,num_steps])
+        X_prot, X_smi = X[0],X[1]
+        prot_valid_lens,enc_valid_lens = valid_lens[0],valid_lens[1]
+        # encoder outputs: tensor([batch_size,num_steps,feat_space_dim])
+        X_prot = self.prot_encoder(X_prot, prot_valid_lens, *args)
+        X_smi = self.smi_encoder(X_smi, enc_valid_lens, *args)
+        #enc_outputs = self.cross_encoder(torch.cat((X_prot,X_smi),0), enc_valid_lens, *args)
+        # X_mix = X_prot * X_smi
+        if self.training:
+            noise = torch.randn_like(X_smi) * self.std
+            X_smi = ((noise + X_smi).detach() - X_smi).detach() + X_smi
+        X_mix = self.relu( (X_prot + X_smi)/ torch.tensor(2))
+        # X_mix += self.noise(X_mix)
+        # X_mix = self.addnorm(self.ffn(X_mix),(X_mix+X_prot+X_smi))
+        # X_mix = self.addnorm(self.ffn(X_mix),(X_mix+X_prot+X_smi) / torch.tensor(3))
+        # X_mix = self.ffn(self.addnorm(X_mix,(X_prot+X_smi) / torch.tensor(3)))
+
+        enc_outputs = self.cross_encoder(X_mix, enc_valid_lens, *args)
+        # enc_outputs += self.noise(enc_outputs)
+        printer('PALACE','enc_outputs',enc_outputs.shape)
+
+        # dec_state: [enc_outputs, enc_valid_lens, [None] * self.num_blks]
+        # enc_valid_lens = src_valid_len: ([N]): tensor([valid_len_for_each_sample])
+        dec_state = self.decoder.init_state(enc_outputs,enc_valid_lens, *args)
+        #printer("PALACE","dec_state",dec_state)
+
+        return self.decoder(dec_X, dec_state)
 
 class PALACE_SMILES(nn.Module):
     """编码器-解码器架构的基类
@@ -1395,6 +1496,12 @@ def sequence_mask_v2(X, valid_len):
     #print(valid_len)
     #print(mask)
     return mask
+
+def get_parameter_number(model):
+    total_num = sum(p.numel() for p in model.parameters())
+    trainable_num = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return {'Total': total_num, 'Trainable': trainable_num}
+
 
 class MaskedSoftmaxCELoss(nn.CrossEntropyLoss):
     """带遮蔽的softmax交叉熵损失函数
@@ -2647,7 +2754,7 @@ def train_PALACE(piece,net, data_iter, test_iter, optimizer,scheduler, loss, num
                 try: y_eos = (y == tgt_vocab['<eos>']).nonzero()[0].item()
                 except:
                     y_eos = num_steps
-                    # print(f" not found <eos> in {y}.")
+                    print(f"train_PALACE not found <eos> during training.")
                 try: p_eos = (p == tgt_vocab['<eos>']).nonzero()[0].item()
                 except: p_eos = num_steps
                 p_valid = p[:p_eos]
@@ -2713,8 +2820,7 @@ def train_PALACE(piece,net, data_iter, test_iter, optimizer,scheduler, loss, num
                     try: y_eos = (y == tgt_vocab['<eos>']).nonzero()[0].item()
                     except:
                         y_eos = num_steps
-                        print(tgt_vocab['<eos>'])
-                        print(" not found.")
+                        print(f"train_PALACE not found {tgt_vocab['<eos>']} during testing.")
                     try: p_eos = (p == tgt_vocab['<eos>']).nonzero()[0].item()
                     except: p_eos = num_steps
                     p_valid = p[:p_eos]
@@ -2734,6 +2840,144 @@ def train_PALACE(piece,net, data_iter, test_iter, optimizer,scheduler, loss, num
 
     dist.barrier()
 
+def train_PALACE_withnodist(piece,net, data_iter, test_iter, optimizer,scheduler, loss, num_epochs, tgt_vocab,
+                 device,loss_log, model_id, diagnose = False):
+    """训练序列到序列模型
+    """
+    net.train()
+    for epoch in range(num_epochs):
+        timer = Timer()
+        metric = Accumulator(2)  # 训练损失总和，词元数量
+        #assert trained_model_dir is not None, "trained model is not available."
+        correct = 0
+        total_seq = 0
+        data_iter.sampler.set_epoch(epoch)
+        for i,batch in enumerate(data_iter):
+            # print(f"batch: {batch}\n")
+            optimizer.zero_grad()
+            X_prot,prot_valid_len, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
+            # bos: torch.Size([batch_size, 1])
+            bos = torch.tensor([tgt_vocab['<bos>']] * Y.shape[0],device=device).reshape(-1, 1)
+
+            # dec_input: torch.Size([batch_size, num_steps])
+            # removed the last tok in each sample of Y: (Y: [batch_size, num_steps-1])
+            # add bos tok in begining of each sample of Y: (dec_input[batch_size, num_steps])
+            dec_input = torch.cat([bos, Y[:, :-1]], 1)  # force teaching
+            printer("train_PALACE:","X_prot",X_prot.shape)
+            printer("train_PALACE:","X",X.shape)
+            # Y_hat: (batch_size,num_steps,vocab_size)
+            # Y: (batch_size,num_steps)
+            Y_hat, _ = net([X_prot, X], dec_input, [prot_valid_len,X_valid_len])
+            # loss and backward
+            l = loss(Y_hat, Y, Y_valid_len, epoch, diagnose, model_id)
+            l.sum().backward() # 损失函数的标量进行“反向传播”
+            grad_clipping(net, 1, diagnose)
+            num_tokens = Y_valid_len.sum()
+            optimizer.step()
+            with torch.no_grad():
+                loss_sum = l.sum()
+                metric.add(loss_sum, num_tokens)
+
+            # accuracy
+            batch_size = Y_hat.shape[0]
+            total_seq += batch_size
+            num_steps = Y_hat.shape[1]
+            preds = Y_hat.argmax(dim=2).type(torch.int32)
+            for i in range(batch_size):
+                p, y = preds[i], Y[i]
+                if epoch % 90 == 1 and i == 1 and diagnose: # 8
+                    print(f"p:{p}")
+                    print(f"p shape:{p.shape}")
+                    print(f"y:{y}")
+                    print(f"y shape:{y.shape}")
+                try: y_eos = (y == tgt_vocab['<eos>']).nonzero()[0].item()
+                except:
+                    y_eos = num_steps
+                    print(f"train_PALACE_withnodist not found <eos> during training.")
+                try: p_eos = (p == tgt_vocab['<eos>']).nonzero()[0].item()
+                except: p_eos = num_steps
+                p_valid = p[:p_eos]
+                y_valid = y[:y_eos]
+                if epoch % 90 == 1 and i == 1 and diagnose:
+                    print(f"p_valid:{p_valid}")
+                    print(f"p_valid shape:{p_valid.shape}")
+                    print(f"y_valid:{y_valid}")
+                    print(f"y_valid shape:{y_valid.shape}")
+                    print(f"lossCE weight:{loss.weight}")
+                if torch.equal(p_valid, y_valid): correct += 1
+
+        if diagnose and epoch % 100 == 0: grad_diagnose(net, model_id)
+
+        scheduler.step(loss_sum)
+        # scheduler.step()
+
+        loss_ = metric[0] / metric[1]
+        accuracy = correct / total_seq
+        with open(loss_log,'a') as o:
+            o.write(f"piece:{piece}\tepoch:{epoch}\tloss:{loss_:.8f}\taccuracy:{accuracy:.8f}\tlr:{optimizer.param_groups[0]['lr']}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n")
+
+        # test
+        timer = Timer()
+        metric = Accumulator(2)  # 训练损失总和，词元数量
+        #assert trained_model_dir is not None, "trained model is not available."
+        correct = 0
+        total_seq = 0
+        data_iter.sampler.set_epoch(epoch)
+        for i,batch in enumerate(test_iter):
+            with torch.no_grad():
+                X_prot,prot_valid_len, X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
+                # bos: torch.Size([batch_size, 1])
+                bos = torch.tensor([tgt_vocab['<bos>']] * Y.shape[0],device=device).reshape(-1, 1)
+
+                # dec_input: torch.Size([batch_size, num_steps])
+                # removed the last tok in each sample of Y: (Y: [batch_size, num_steps-1])
+                # add bos tok in begining of each sample of Y: (dec_input[batch_size, num_steps])
+                dec_input = torch.cat([bos, Y[:, :-1]], 1)  # force teaching
+                printer("test_PALACE:","X_prot",X_prot.shape)
+                printer("test_PALACE:","X",X.shape)
+                # Y_hat: (batch_size,num_steps,vocab_size)
+                # Y: (batch_size,num_steps)
+                Y_hat, _ = net([X_prot, X], dec_input, [prot_valid_len,X_valid_len])
+                # loss and backward
+                l = loss(Y_hat, Y, Y_valid_len, epoch, diagnose, model_id)
+                num_tokens = Y_valid_len.sum()
+                loss_sum = l.sum()
+                metric.add(loss_sum, num_tokens)
+
+                # accuracy
+                batch_size = Y_hat.shape[0]
+                total_seq += batch_size
+                num_steps = Y_hat.shape[1]
+                preds = Y_hat.argmax(dim=2).type(torch.int32)
+                for i in range(batch_size):
+                    p, y = preds[i], Y[i]
+                    if epoch % 90 == 1 and i == 1 and diagnose: # 8
+                        print(f"p:{p}")
+                        print(f"p shape:{p.shape}")
+                        print(f"y:{y}")
+                        print(f"y shape:{y.shape}")
+                    try: y_eos = (y == tgt_vocab['<eos>']).nonzero()[0].item()
+                    except:
+                        y_eos = num_steps
+                        print(f"train_PALACE_withnodist not found {tgt_vocab['<eos>']} during testing.")
+                    try: p_eos = (p == tgt_vocab['<eos>']).nonzero()[0].item()
+                    except: p_eos = num_steps
+                    p_valid = p[:p_eos]
+                    y_valid = y[:y_eos]
+                    if epoch % 90 == 1 and i == 1 and diagnose:
+                        print(f"p_valid:{p_valid}")
+                        print(f"p_valid shape:{p_valid.shape}")
+                        print(f"y_valid:{y_valid}")
+                        print(f"y_valid shape:{y_valid.shape}")
+                        print(f"lossCE weight:{loss.weight}")
+                    if torch.equal(p_valid, y_valid): correct += 1
+
+        loss_ = metric[0] / metric[1]
+        accuracy = correct / total_seq
+        with open(loss_log,'a') as o:
+            o.write(f"piece:{piece}\tepoch:{epoch}\ttest_loss:{loss_:.8f}\ttest_accuracy:{accuracy:.8f}\tlr:{optimizer.param_groups[0]['lr']}\ttokens/sec:{metric[1] / timer.stop():.1f}\tdevice: {str(device)}\n")
+
+    # dist.barrier()
 
 
 def test_PALACE(piece,net, data_iter,optimizer,scheduler, loss, num_epochs, tgt_vocab,
@@ -2786,8 +3030,7 @@ def test_PALACE(piece,net, data_iter,optimizer,scheduler, loss, num_epochs, tgt_
                     try: y_eos = (y == tgt_vocab['<eos>']).nonzero()[0].item()
                     except:
                         y_eos = num_steps
-                        print(tgt_vocab['<eos>'])
-                        print(" not found.")
+                        print(f"test_PALACE not found {tgt_vocab['<eos>']}.")
                     try: p_eos = (p == tgt_vocab['<eos>']).nonzero()[0].item()
                     except: p_eos = num_steps
                     p_valid = p[:p_eos]

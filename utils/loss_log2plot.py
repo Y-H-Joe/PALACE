@@ -22,9 +22,9 @@ world_size = 1
 def split_(str_):
     return str_.split(':')[1]
 
-loss = pd.read_csv(r'D:\Projects\AI+yao\metabolism\microbiomeMetabolism\PALACE\PALACE_v19_large.loss_accu.log',sep='\t',header=None)[2].apply(split_).\
+loss = pd.read_csv(r'D:\Projects\AI+yao\metabolism\microbiomeMetabolism\PALACE\PALACE_v14.loss_accu.log',sep='\t',header=None)[2].apply(split_).\
                     astype(float).values.reshape((-1,world_size)).mean(axis=1).tolist()
-accuracy = pd.read_csv(r'D:\Projects\AI+yao\metabolism\microbiomeMetabolism\PALACE\PALACE_v19_large.loss_accu.log',sep='\t',header=None)[3].apply(split_).\
+accuracy = pd.read_csv(r'D:\Projects\AI+yao\metabolism\microbiomeMetabolism\PALACE\PALACE_v14.loss_accu.log',sep='\t',header=None)[3].apply(split_).\
                     astype(float).values.reshape((-1,world_size)).mean(axis=1).tolist()
 """
 loss = pd.read_csv(r'D:\Projects\AI+yao\metabolism\microbiomeMetabolism\PALACE\PALACE_v13.loss_accu.log',sep='\t',header=None)[2].apply(split_).\
